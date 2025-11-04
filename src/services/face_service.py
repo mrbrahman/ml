@@ -83,7 +83,7 @@ def _train_from_directory(dataset_path: str) -> bool:
         
         # Process all images for this person
         person_embeddings = []
-        for image_file in person_dir.glob("*.{jpg,jpeg,png,bmp}"):
+        for image_file in person_dir.glob("*.jpg"):
             try:
                 faces_data = detect_faces(str(image_file))
                 if faces_data:
