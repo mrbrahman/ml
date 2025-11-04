@@ -176,9 +176,28 @@ JSON format:
 ### GET /health
 Health check endpoint.
 
+## Project Structure
+
+```
+project/
+├── src/                    # Application source code
+│   ├── api/               # FastAPI routes and handlers
+│   ├── services/          # Business logic layer
+│   ├── data/              # Data access and vector operations
+│   ├── core/              # ML model operations
+│   ├── infrastructure/    # Configuration and model management
+│   └── schemas/           # API request/response models
+├── data/                  # Runtime data storage
+│   ├── faiss_indices/     # FAISS vector indices
+│   └── training_data/     # Training datasets
+├── main.py                # Application entry point
+├── download_all_models.py # Model download utility
+└── requirements.txt       # Python dependencies
+```
+
 ## Configuration
 
-Edit `config.py` to modify:
+Edit `src/infrastructure/config.py` to modify:
 - Model settings
 - Similarity thresholds
 - FAISS storage paths
@@ -210,4 +229,4 @@ curl -X POST "http://localhost:8000/train" \
 
 - Face embeddings and clusters stored in FAISS indices
 - No metadata storage - all returned to calling application
-- Persistent storage in `faiss_indices/` directory
+- Persistent storage in `data/faiss_indices/` directory

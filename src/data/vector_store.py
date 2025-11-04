@@ -2,8 +2,8 @@ import faiss
 import numpy as np
 import pickle
 import os
-from typing import List, Dict, Optional, Tuple
-from config import FAISS_INDEX_DIR, FACE_INDEX_FILE, VISUAL_INDEX_FILE, TEXT_INDEX_FILE, FACE_SIMILARITY_THRESHOLD
+from typing import Tuple, Optional
+from src.infrastructure.config import FAISS_INDEX_DIR, FACE_INDEX_FILE, VISUAL_INDEX_FILE, TEXT_INDEX_FILE, FACE_SIMILARITY_THRESHOLD
 import uuid
 
 class VectorStore:
@@ -82,12 +82,6 @@ class VectorStore:
         with open(mapping_file, 'wb') as f:
             pickle.dump(data, f)
     
-    def _image_exists(self, image_id: str) -> bool:
-        """Check if image_id already exists in any index"""
-        return (image_id in self.face_id_mapping.values() or 
-                image_id in self.visual_id_mapping.values() or 
-                image_id in self.text_id_mapping.values())
-    
     def add_face_embedding(self, image_id: str, embedding: np.ndarray) -> Tuple[str, Optional[str]]:
         """Add face embedding and return cluster_id and person_name if recognized"""
         embedding = embedding.reshape(1, -1).astype('float32')
@@ -141,32 +135,6 @@ class VectorStore:
             self._save_mappings("face")
             return True
         return False
-    
-    def search_similar_images(self, image_embedding: np.ndarray, k: int = 10) -> List[Tuple[str, float]]:
-        """Search for visually similar images"""
-        if self.visual_index.ntotal == 0:
-            return []
-        
-        image_embedding = image_embedding.reshape(1, -1).astype('float32')
-        scores, indices = self.visual_index.search(image_embedding, k=min(k, self.visual_index.ntotal))
-        
-        results = []
-        for score, idx in zip(scores[0], indices[0]):
-            if idx != -1 and idx in self.visual_id_mapping:
-                image_id = self.visual_id_mapping[idx]
-                results.append((image_id, float(score)))
-        
-        return results
-    
-    def get_existing_faces(self, image_id: str) -> List[Tuple[str, Optional[str]]]:
-        """Get existing face clusters for an image_id"""
-        existing_faces = []
-        for cluster_id, face_indices in self.face_clusters.items():
-            for idx in face_indices:
-                if idx in self.face_id_mapping and self.face_id_mapping[idx] == image_id:
-                    person_name = self.face_cluster_names.get(cluster_id)
-                    existing_faces.append((cluster_id, person_name))
-        return existing_faces
     
     def remove_image_embeddings(self, image_id: str):
         """Remove all embeddings for a specific image_id"""
@@ -248,22 +216,6 @@ class VectorStore:
         self._save_mappings("face")
         self._save_mappings("visual")
         self._save_mappings("text")
-    
-    def search_by_text(self, text_embedding: np.ndarray, k: int = 10) -> List[Tuple[str, float]]:
-        """Search for similar images using text embedding"""
-        if self.text_index.ntotal == 0:
-            return []
-        
-        text_embedding = text_embedding.reshape(1, -1).astype('float32')
-        scores, indices = self.text_index.search(text_embedding, k=min(k, self.text_index.ntotal))
-        
-        results = []
-        for score, idx in zip(scores[0], indices[0]):
-            if idx != -1 and idx in self.text_id_mapping:
-                image_id = self.text_id_mapping[idx]
-                results.append((image_id, float(score)))
-        
-        return results
 
 # Global vector store instance
 vector_store = VectorStore()

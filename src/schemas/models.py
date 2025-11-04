@@ -14,8 +14,6 @@ class FaceInfo(BaseModel):
     age: Optional[int] = None
     landmarks: Optional[dict] = None  # Named 5-point landmarks
     pose: Optional[dict] = None  # Named head pose angles
-    # landmarks_3d: Optional[List[List[float]]] = None  # 68-point 3D landmarks
-    # landmarks_2d_106: Optional[List[List[float]]] = None  # 106-point 2D landmarks
 
 class AnalyzeImageResponse(BaseModel):
     image_id: str

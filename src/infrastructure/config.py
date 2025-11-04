@@ -20,7 +20,7 @@ MODEL_NAMES = {
 }
 
 # FAISS Configuration
-FAISS_INDEX_DIR = "faiss_indices"
+FAISS_INDEX_DIR = "data/faiss_indices"
 FACE_INDEX_FILE = "faces.index"
 VISUAL_INDEX_FILE = "visual.index"
 TEXT_INDEX_FILE = "text.index"
