@@ -5,10 +5,10 @@ import torch
 from src.schemas.models import (
     AnalyzeImageRequest, AnalyzeImageResponse, NameClusterRequest, 
     NameClusterResponse, SearchRequest, SearchResponse, TrainRequest, 
-    TrainResponse, FaceRecognitionResponse
+    TrainResponse, FaceRecognitionResponse, InfoResponse
 )
 from src.services.image_service import analyze_image, get_similar_images
-from src.services.face_service import recognize_faces, assign_name_to_cluster, train_from_dataset
+from src.services.face_service import recognize_faces, assign_name_to_cluster, train_from_dataset, get_cluster_info
 from src.services.search_service import search_by_text, find_similar_images
 from src.infrastructure.model_manager import model_manager
 
@@ -117,6 +117,11 @@ async def search_similar_images_endpoint(request: AnalyzeImageRequest):
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
+
+@app.get("/faceinfo", response_model=InfoResponse)
+async def get_face_info():
+    """Get face cluster information"""
+    return get_cluster_info()
 
 @app.get("/health")
 async def health_check():

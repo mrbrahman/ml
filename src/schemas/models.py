@@ -55,3 +55,13 @@ class FaceRecognitionResponse(BaseModel):
     image_path: str
     faces: List[FaceInfo]
     models_used: dict
+
+class ClusterInfo(BaseModel):
+    cluster_id: str
+    name: Optional[str] = None
+    face_count: int
+
+class InfoResponse(BaseModel):
+    total_clusters: int
+    named_clusters: int
+    clusters: List[ClusterInfo]

@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 from src.core.face_detector import detect_faces
 from src.data.vector_store import vector_store
-from src.schemas.models import FaceInfo, FaceRecognitionResponse
+from src.schemas.models import FaceInfo, FaceRecognitionResponse, InfoResponse, ClusterInfo
 from src.infrastructure.config import MODEL_NAMES
 
 def recognize_faces(image_id: str, image_path: str) -> FaceRecognitionResponse:
@@ -176,3 +176,25 @@ def _train_from_json(json_path: str) -> bool:
     
     print(f"Training complete! Processed {trained_faces} faces")
     return True
+
+def get_cluster_info() -> InfoResponse:
+    """Get information about face clusters"""
+    clusters = []
+    named_count = 0
+    
+    for cluster_id, face_indices in vector_store.face_clusters.items():
+        name = vector_store.face_cluster_names.get(cluster_id)
+        if name:
+            named_count += 1
+        
+        clusters.append(ClusterInfo(
+            cluster_id=cluster_id,
+            name=name,
+            face_count=len(face_indices)
+        ))
+    
+    return InfoResponse(
+        total_clusters=len(clusters),
+        named_clusters=named_count,
+        clusters=clusters
+    )
