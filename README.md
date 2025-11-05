@@ -56,10 +56,28 @@ Analyze an image for faces and generate description.
       "bbox": [x, y, w, h],
       "confidence": 0.95,
       "cluster_id": "cluster_abc123",
-      "person_name": null
+      "person_name": null,
+      "gender": "M",
+      "age": 25,
+      "landmarks": {
+        "left_eye": [x1, y1],
+        "right_eye": [x2, y2],
+        "nose": [x3, y3],
+        "left_mouth": [x4, y4],
+        "right_mouth": [x5, y5]
+      },
+      "pose": {
+        "yaw": -5.2,
+        "pitch": 2.1,
+        "roll": 1.8
+      }
     }
   ],
-  "description": "A detailed description of the image"
+  "description": "A detailed description of the image",
+  "models_used": {
+    "face_detection": "buffalo_l",
+    "image_captioning": "blip2-opt-2.7b"
+  }
 }
 ```
 
@@ -84,9 +102,26 @@ Face recognition only - detect and identify faces without image description.
       "bbox": [x, y, w, h],
       "confidence": 0.95,
       "cluster_id": "cluster_abc123",
-      "person_name": "John Doe"
+      "person_name": "John Doe",
+      "gender": "M",
+      "age": 25,
+      "landmarks": {
+        "left_eye": [x1, y1],
+        "right_eye": [x2, y2],
+        "nose": [x3, y3],
+        "left_mouth": [x4, y4],
+        "right_mouth": [x5, y5]
+      },
+      "pose": {
+        "yaw": -5.2,
+        "pitch": 2.1,
+        "roll": 1.8
+      }
     }
-  ]
+  ],
+  "models_used": {
+    "face_detection": "buffalo_l"
+  }
 }
 ```
 
@@ -173,8 +208,53 @@ JSON format:
 }
 ```
 
+### GET /faceinfo
+Get information about face clusters and recognition statistics.
+
+**Response:**
+```json
+{
+  "total_clusters": 15,
+  "named_clusters": 8,
+  "clusters": [
+    {
+      "cluster_id": "cluster_abc123",
+      "name": "John Doe",
+      "face_count": 12
+    },
+    {
+      "cluster_id": "cluster_def456",
+      "name": null,
+      "face_count": 3
+    }
+  ]
+}
+```
+
 ### GET /health
-Health check endpoint.
+Health check endpoint with detailed system information.
+
+**Response:**
+```json
+{
+  "status": "healthy",
+  "device": "cuda",
+  "cuda_available": true,
+  "gpu_info": {
+    "gpu_count": 1,
+    "current_device": 0,
+    "device_name": "NVIDIA GeForce RTX 4090",
+    "memory_allocated": 2048576,
+    "memory_reserved": 4194304
+  },
+  "pytorch_version": "2.0.1",
+  "models_loaded": {
+    "face": true,
+    "blip": true,
+    "clip": true
+  }
+}
+```
 
 ## Project Structure
 
