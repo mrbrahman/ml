@@ -5,10 +5,10 @@ import torch
 from src.schemas.models import (
     AnalyzeImageRequest, AnalyzeImageResponse, NameClusterRequest, 
     NameClusterResponse, SearchRequest, SearchResponse, TrainRequest, 
-    TrainResponse, FaceRecognitionResponse, InfoResponse
+    TrainResponse, FaceRecognitionResponse, InfoResponse, UpdatePersonNameRequest
 )
 from src.services.image_service import analyze_image, get_similar_images
-from src.services.face_service import recognize_faces, assign_name_to_cluster, train_from_dataset, get_cluster_info
+from src.services.face_service import recognize_faces, assign_name_to_cluster, train_from_dataset, get_cluster_info, update_cluster_name_by_old_name
 from src.services.search_service import search_by_text, find_similar_images
 from src.infrastructure.model_manager import model_manager
 
@@ -117,6 +117,23 @@ async def search_similar_images_endpoint(request: AnalyzeImageRequest):
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
+
+@app.post("/faces/update-name", response_model=NameClusterResponse)
+async def update_face_cluster_name_endpoint(request: UpdatePersonNameRequest):
+    """Update name of an existing face cluster"""
+    
+    success, cluster_count, face_count = update_cluster_name_by_old_name(request.old_name, request.new_name)
+    
+    if success:
+        return NameClusterResponse(
+            success=True,
+            message=f"Updated '{request.old_name}' to '{request.new_name}' ({cluster_count} clusters, {face_count} faces)"
+        )
+    else:
+        return NameClusterResponse(
+            success=False,
+            message=f"Person '{request.old_name}' not found"
+        )
 
 @app.get("/faceinfo", response_model=InfoResponse)
 async def get_face_info():

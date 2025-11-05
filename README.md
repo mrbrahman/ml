@@ -135,6 +135,25 @@ Assign a name to a face cluster.
 }
 ```
 
+### POST /faces/update-name
+Update the name of an existing face cluster.
+
+**Request:**
+```json
+{
+  "old_name": "John Doe",
+  "new_name": "Jane Smith"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Updated 'John Doe' to 'Jane Smith' (2 clusters, 15 faces)"
+}
+```
+
 ### POST /search/text
 Search for images using text queries.
 

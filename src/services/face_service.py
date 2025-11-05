@@ -177,6 +177,17 @@ def _train_from_json(json_path: str) -> bool:
     print(f"Training complete! Processed {trained_faces} faces")
     return True
 
+def update_cluster_name_by_old_name(old_name: str, new_name: str) -> tuple[bool, int, int]:
+    """Update all clusters with the old name"""
+    updated_clusters = 0
+    updated_faces = 0
+    for cluster_id, name in list(vector_store.face_cluster_names.items()):
+        if name == old_name:
+            vector_store.name_face_cluster(cluster_id, new_name)
+            updated_clusters += 1
+            updated_faces += len(vector_store.face_clusters.get(cluster_id, []))
+    return updated_clusters > 0, updated_clusters, updated_faces
+
 def get_cluster_info() -> InfoResponse:
     """Get information about face clusters"""
     clusters = []

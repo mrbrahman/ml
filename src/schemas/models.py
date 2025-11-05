@@ -65,3 +65,7 @@ class InfoResponse(BaseModel):
     total_clusters: int
     named_clusters: int
     clusters: List[ClusterInfo]
+
+class UpdatePersonNameRequest(BaseModel):
+    old_name: str
+    new_name: str
