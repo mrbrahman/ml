@@ -98,23 +98,22 @@ def _train_from_directory(dataset_path: str) -> bool:
         
         # Create cluster for this person if we have embeddings
         if person_embeddings:
-            # Use first embedding to create cluster, then add others
-            cluster_id, _ = vector_store.add_face_embedding(
-                f"training_{person_name}_0", 
-                person_embeddings[0]
-            )
+            created_clusters = set()
             
-            # Add remaining embeddings to the same cluster
-            for i, embedding in enumerate(person_embeddings[1:], 1):
-                vector_store.add_face_embedding(
+            # Add all embeddings and track created clusters
+            for i, embedding in enumerate(person_embeddings):
+                cluster_id, _ = vector_store.add_face_embedding(
                     f"training_{person_name}_{i}", 
                     embedding
                 )
+                created_clusters.add(cluster_id)
             
-            # Name the cluster
-            vector_store.name_face_cluster(cluster_id, person_name)
+            # Name all clusters created for this person
+            for cluster_id in created_clusters:
+                vector_store.name_face_cluster(cluster_id, person_name)
+            
             trained_faces += len(person_embeddings)
-            print(f"  ✅ Created cluster '{cluster_id}' for {person_name} with {len(person_embeddings)} faces")
+            print(f"  ✅ Created {len(created_clusters)} cluster(s) for {person_name} with {len(person_embeddings)} faces")
     
     print(f"Training complete! Processed {trained_faces} faces")
     return True
@@ -159,20 +158,22 @@ def _train_from_json(json_path: str) -> bool:
                 print(f"  ❌ Error processing {Path(image_path).name}: {e}")
         
         if person_embeddings:
-            cluster_id, _ = vector_store.add_face_embedding(
-                f"training_{person_name}_0", 
-                person_embeddings[0]
-            )
+            created_clusters = set()
             
-            for i, embedding in enumerate(person_embeddings[1:], 1):
-                vector_store.add_face_embedding(
+            # Add all embeddings and track created clusters
+            for i, embedding in enumerate(person_embeddings):
+                cluster_id, _ = vector_store.add_face_embedding(
                     f"training_{person_name}_{i}", 
                     embedding
                 )
+                created_clusters.add(cluster_id)
             
-            vector_store.name_face_cluster(cluster_id, person_name)
+            # Name all clusters created for this person
+            for cluster_id in created_clusters:
+                vector_store.name_face_cluster(cluster_id, person_name)
+            
             trained_faces += len(person_embeddings)
-            print(f"  ✅ Created cluster '{cluster_id}' for {person_name} with {len(person_embeddings)} faces")
+            print(f"  ✅ Created {len(created_clusters)} cluster(s) for {person_name} with {len(person_embeddings)} faces")
     
     print(f"Training complete! Processed {trained_faces} faces")
     return True
