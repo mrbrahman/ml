@@ -154,6 +154,27 @@ Update the name of an existing face cluster.
 }
 ```
 
+### POST /faces/correct
+Correct a face assignment by providing the correct person name. The system will automatically move the face to the best matching cluster for that person or create a new one.
+
+**Request:**
+```json
+{
+  "image_id": "uuid-from-nodejs",
+  "person_name": "John Doe"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Moved to existing cluster for John Doe",
+  "cluster_id": "cluster_def456",
+  "action_taken": "moved_to_existing"
+}
+```
+
 ### POST /search/text
 Search for images using text queries.
 
@@ -190,9 +211,9 @@ Find visually similar images.
 ```
 
 ### POST /train
-Train face recognition from a dataset of known faces.
+Train face recognition from a dataset of known faces. Supports two dataset formats:
 
-**Directory Structure Training:**
+**Method 1: Directory Structure**
 ```json
 {
   "dataset_path": "/path/to/training_data",
@@ -211,7 +232,7 @@ training_data/
     └── photo2.jpg
 ```
 
-**JSON Training:**
+**Method 2: JSON File**
 ```json
 {
   "dataset_path": "/path/to/training.json",
@@ -219,7 +240,7 @@ training_data/
 }
 ```
 
-JSON format:
+The JSON file should contain person names as keys and arrays of image paths as values:
 ```json
 {
   "John Doe": ["/path/to/john1.jpg", "/path/to/john2.jpg"],
@@ -308,16 +329,16 @@ The service automatically detects and uses GPU if available. Models will be load
 
 ## Training Dataset
 
-Train the system with known faces before use:
+Train the system with known faces before use. Two methods are supported:
 
-**Option 1: Directory Structure**
+**Method 1: Directory Structure**
 ```bash
 curl -X POST "http://localhost:8000/train" \
   -H "Content-Type: application/json" \
   -d '{"dataset_path": "/path/to/training_data", "dataset_type": "directory"}'
 ```
 
-**Option 2: JSON File**
+**Method 2: JSON File**
 ```bash
 curl -X POST "http://localhost:8000/train" \
   -H "Content-Type: application/json" \

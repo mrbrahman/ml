@@ -136,6 +136,71 @@ class VectorStore:
             return True
         return False
     
+    def correct_face_assignment(self, image_id: str, person_name: str) -> Tuple[bool, str, str, str]:
+        """Correct face assignment by moving to best cluster for given person name"""
+        # Find the face index for this image_id
+        face_idx = None
+        current_cluster_id = None
+        
+        for cluster_id, face_indices in self.face_clusters.items():
+            for idx in face_indices:
+                if self.face_id_mapping.get(idx) == image_id:
+                    face_idx = idx
+                    current_cluster_id = cluster_id
+                    break
+            if face_idx is not None:
+                break
+        
+        if face_idx is None:
+            return False, "", "", "Face not found"
+        
+        # Check if already correctly assigned
+        current_name = self.face_cluster_names.get(current_cluster_id)
+        if current_name == person_name:
+            return True, current_cluster_id, "already_correct", f"Face already correctly assigned to {person_name}"
+        
+        # Find clusters with the target person name
+        target_clusters = [cid for cid, name in self.face_cluster_names.items() if name == person_name]
+        
+        if target_clusters:
+            # Find best matching cluster among those with the correct name
+            embedding = self.face_index.reconstruct(face_idx).reshape(1, -1)
+            best_cluster_id = None
+            best_score = 0
+            
+            for cluster_id in target_clusters:
+                for idx in self.face_clusters[cluster_id]:
+                    other_embedding = self.face_index.reconstruct(idx).reshape(1, -1)
+                    score = np.dot(embedding, other_embedding.T)[0][0]
+                    if score > best_score:
+                        best_score = score
+                        best_cluster_id = cluster_id
+            
+            if best_cluster_id:
+                # Move to existing cluster
+                self.face_clusters[current_cluster_id].remove(face_idx)
+                if not self.face_clusters[current_cluster_id]:
+                    del self.face_clusters[current_cluster_id]
+                    if current_cluster_id in self.face_cluster_names:
+                        del self.face_cluster_names[current_cluster_id]
+                
+                self.face_clusters[best_cluster_id].append(face_idx)
+                self._save_indices()
+                return True, best_cluster_id, "moved_to_existing", f"Moved to existing cluster for {person_name}"
+        
+        # Create new cluster for this person
+        new_cluster_id = f"cluster_{uuid.uuid4().hex[:8]}"
+        self.face_clusters[current_cluster_id].remove(face_idx)
+        if not self.face_clusters[current_cluster_id]:
+            del self.face_clusters[current_cluster_id]
+            if current_cluster_id in self.face_cluster_names:
+                del self.face_cluster_names[current_cluster_id]
+        
+        self.face_clusters[new_cluster_id] = [face_idx]
+        self.face_cluster_names[new_cluster_id] = person_name
+        self._save_indices()
+        return True, new_cluster_id, "created_new", f"Created new cluster for {person_name}"
+    
     def remove_image_embeddings(self, image_id: str):
         """Remove all embeddings for a specific image_id"""
         removed_count = {'faces': 0, 'visual': 0, 'text': 0}

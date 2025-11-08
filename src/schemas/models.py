@@ -69,3 +69,13 @@ class InfoResponse(BaseModel):
 class UpdatePersonNameRequest(BaseModel):
     old_name: str
     new_name: str
+
+class CorrectFaceAssignmentRequest(BaseModel):
+    image_id: str
+    person_name: str
+
+class CorrectFaceAssignmentResponse(BaseModel):
+    success: bool
+    message: str
+    cluster_id: str
+    action_taken: str  # "moved_to_existing", "created_new", "already_correct"

@@ -5,10 +5,11 @@ import torch
 from src.schemas.models import (
     AnalyzeImageRequest, AnalyzeImageResponse, NameClusterRequest, 
     NameClusterResponse, SearchRequest, SearchResponse, TrainRequest, 
-    TrainResponse, FaceRecognitionResponse, InfoResponse, UpdatePersonNameRequest
+    TrainResponse, FaceRecognitionResponse, InfoResponse, UpdatePersonNameRequest,
+    CorrectFaceAssignmentRequest, CorrectFaceAssignmentResponse
 )
 from src.services.image_service import analyze_image, get_similar_images
-from src.services.face_service import recognize_faces, assign_name_to_cluster, train_from_dataset, get_cluster_info, update_cluster_name_by_old_name
+from src.services.face_service import recognize_faces, assign_name_to_cluster, train_from_dataset, get_cluster_info, update_cluster_name_by_old_name, correct_face_assignment
 from src.services.search_service import search_by_text, find_similar_images
 from src.infrastructure.model_manager import model_manager
 
@@ -134,6 +135,15 @@ async def update_face_cluster_name_endpoint(request: UpdatePersonNameRequest):
             success=False,
             message=f"Person '{request.old_name}' not found"
         )
+
+@app.post("/faces/correct", response_model=CorrectFaceAssignmentResponse)
+async def correct_face_assignment_endpoint(request: CorrectFaceAssignmentRequest):
+    """Correct face assignment by providing the correct person name"""
+    
+    try:
+        return correct_face_assignment(request.image_id, request.person_name)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Face correction failed: {str(e)}")
 
 @app.get("/faceinfo", response_model=InfoResponse)
 async def get_face_info():

@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 from src.core.face_detector import detect_faces
 from src.data.vector_store import vector_store
-from src.schemas.models import FaceInfo, FaceRecognitionResponse, InfoResponse, ClusterInfo
+from src.schemas.models import FaceInfo, FaceRecognitionResponse, InfoResponse, ClusterInfo, CorrectFaceAssignmentResponse
 from src.infrastructure.config import MODEL_NAMES
 
 def recognize_faces(image_id: str, image_path: str) -> FaceRecognitionResponse:
@@ -90,11 +90,11 @@ def _train_from_directory(dataset_path: str) -> bool:
                     # Use the first/largest face found
                     face_data = max(faces_data, key=lambda x: x['confidence'])
                     person_embeddings.append(face_data['embedding'])
-                    print(f"  ✅ {image_file.name}")
+                    print(f"  [OK] {image_file.name}")
                 else:
-                    print(f"  ❌ No face found in {image_file.name}")
+                    print(f"  [FAIL] No face found in {image_file.name}")
             except Exception as e:
-                print(f"  ❌ Error processing {image_file.name}: {e}")
+                print(f"  [ERROR] Error processing {image_file.name}: {e}")
         
         # Create cluster for this person if we have embeddings
         if person_embeddings:
@@ -113,7 +113,7 @@ def _train_from_directory(dataset_path: str) -> bool:
                 vector_store.name_face_cluster(cluster_id, person_name)
             
             trained_faces += len(person_embeddings)
-            print(f"  ✅ Created {len(created_clusters)} cluster(s) for {person_name} with {len(person_embeddings)} faces")
+            print(f"  [OK] Created {len(created_clusters)} cluster(s) for {person_name} with {len(person_embeddings)} faces")
     
     print(f"Training complete! Processed {trained_faces} faces")
     return True
@@ -143,7 +143,7 @@ def _train_from_json(json_path: str) -> bool:
         person_embeddings = []
         for image_path in image_paths:
             if not os.path.exists(image_path):
-                print(f"  ❌ Image not found: {image_path}")
+                print(f"  [FAIL] Image not found: {image_path}")
                 continue
             
             try:
@@ -151,11 +151,11 @@ def _train_from_json(json_path: str) -> bool:
                 if faces_data:
                     face_data = max(faces_data, key=lambda x: x['confidence'])
                     person_embeddings.append(face_data['embedding'])
-                    print(f"  ✅ {Path(image_path).name}")
+                    print(f"  [OK] {Path(image_path).name}")
                 else:
-                    print(f"  ❌ No face found in {Path(image_path).name}")
+                    print(f"  [FAIL] No face found in {Path(image_path).name}")
             except Exception as e:
-                print(f"  ❌ Error processing {Path(image_path).name}: {e}")
+                print(f"  [ERROR] Error processing {Path(image_path).name}: {e}")
         
         if person_embeddings:
             created_clusters = set()
@@ -173,7 +173,7 @@ def _train_from_json(json_path: str) -> bool:
                 vector_store.name_face_cluster(cluster_id, person_name)
             
             trained_faces += len(person_embeddings)
-            print(f"  ✅ Created {len(created_clusters)} cluster(s) for {person_name} with {len(person_embeddings)} faces")
+            print(f"  [OK] Created {len(created_clusters)} cluster(s) for {person_name} with {len(person_embeddings)} faces")
     
     print(f"Training complete! Processed {trained_faces} faces")
     return True
@@ -188,6 +188,17 @@ def update_cluster_name_by_old_name(old_name: str, new_name: str) -> tuple[bool,
             updated_clusters += 1
             updated_faces += len(vector_store.face_clusters.get(cluster_id, []))
     return updated_clusters > 0, updated_clusters, updated_faces
+
+def correct_face_assignment(image_id: str, person_name: str) -> CorrectFaceAssignmentResponse:
+    """Correct face assignment by moving to appropriate cluster for the person"""
+    success, cluster_id, action, message = vector_store.correct_face_assignment(image_id, person_name)
+    
+    return CorrectFaceAssignmentResponse(
+        success=success,
+        message=message,
+        cluster_id=cluster_id,
+        action_taken=action
+    )
 
 def get_cluster_info() -> InfoResponse:
     """Get information about face clusters"""
