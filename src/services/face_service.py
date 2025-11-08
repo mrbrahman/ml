@@ -1,7 +1,7 @@
 import os
 import json
 from pathlib import Path
-from src.core.face_detector import detect_faces
+from src.core.face_detector import detect_faces, detect_faces_for_training
 from src.data.vector_store import vector_store
 from src.schemas.models import FaceInfo, FaceRecognitionResponse, InfoResponse, ClusterInfo, CorrectFaceAssignmentResponse
 from src.infrastructure.config import MODEL_NAMES
@@ -85,7 +85,7 @@ def _train_from_directory(dataset_path: str) -> bool:
         person_embeddings = []
         for image_file in person_dir.glob("*.jpg"):
             try:
-                faces_data = detect_faces(str(image_file))
+                faces_data = detect_faces_for_training(str(image_file))
                 if faces_data:
                     # Use the first/largest face found
                     face_data = max(faces_data, key=lambda x: x['confidence'])
@@ -147,7 +147,7 @@ def _train_from_json(json_path: str) -> bool:
                 continue
             
             try:
-                faces_data = detect_faces(image_path)
+                faces_data = detect_faces_for_training(image_path)
                 if faces_data:
                     face_data = max(faces_data, key=lambda x: x['confidence'])
                     person_embeddings.append(face_data['embedding'])

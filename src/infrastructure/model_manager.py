@@ -24,6 +24,7 @@ requests.Session.request = patched_request
 class ModelManager:
     def __init__(self):
         self.face_app = None
+        self.face_app_training = None
         self.blip_processor = None
         self.blip_model = None
         self.clip_processor = None
@@ -60,6 +61,34 @@ class ModelManager:
                 print(f"Failed to load InsightFace: {e}")
                 raise
         return self.face_app
+    
+    def get_face_model_for_training(self):
+        """Lazy load InsightFace model with training-specific settings"""
+        if self.face_app_training is None:
+            print("Loading InsightFace model for training...")
+            try:
+                import requests
+                
+                session = requests.Session()
+                session.verify = False
+                
+                original_get = requests.get
+                def patched_get(*args, **kwargs):
+                    kwargs['verify'] = False
+                    return original_get(*args, **kwargs)
+                requests.get = patched_get
+                
+                self.face_app_training = insightface.app.FaceAnalysis(name=FACE_DETECTION_MODEL)
+                # Use more permissive settings for training
+                self.face_app_training.prepare(ctx_id=0 if DEVICE == "cuda" else -1, det_size=(320, 320), det_thresh=0.3)
+                
+                requests.get = original_get
+                
+                print("InsightFace training model loaded successfully")
+            except Exception as e:
+                print(f"Failed to load InsightFace for training: {e}")
+                raise
+        return self.face_app_training
     
     def get_blip_model(self):
         """Lazy load BLIP model with fallback"""

@@ -42,3 +42,30 @@ def detect_faces(image_path):
         
         results.append(face_data)
     return results
+
+def detect_faces_for_training(image_path):
+    """Detect faces with lower thresholds for training - consumes more samples including blurry ones"""
+    face_app = model_manager.get_face_model_for_training()
+    img = cv2.imread(image_path)
+    
+    # Use training model with lower thresholds
+    faces = face_app.get(img, max_num=1)
+    
+    # If no faces found, try with enhanced preprocessing
+    if not faces:
+        # Try histogram equalization to improve contrast for blurry images
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        enhanced = cv2.equalizeHist(gray)
+        enhanced_img = cv2.cvtColor(enhanced, cv2.COLOR_GRAY2BGR)
+        faces = face_app.get(enhanced_img, max_num=1)
+    
+    results = []
+    for face in faces:
+        face_data = {
+            'bbox': face.bbox.tolist(),
+            'confidence': float(face.det_score),
+            'embedding': face.normed_embedding
+        }
+        results.append(face_data)
+    
+    return results
