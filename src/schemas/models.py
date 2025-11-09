@@ -14,6 +14,11 @@ class FaceInfo(BaseModel):
     age: Optional[int] = None
     landmarks: Optional[dict] = None  # Named 5-point landmarks
     pose: Optional[dict] = None  # Named head pose angles
+    reference_cluster_id: Optional[str] = None  # ID of matched cluster
+    reference_image_ids: Optional[List[str]] = None  # Image IDs of all matched faces
+    match_confidence: Optional[float] = None  # Similarity score (0.0-1.0)
+    consensus_count: Optional[int] = None  # How many faces agreed on match
+    is_new_cluster: bool = False  # True if this created a new cluster
 
 class AnalyzeImageResponse(BaseModel):
     image_id: str

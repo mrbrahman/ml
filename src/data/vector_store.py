@@ -2,8 +2,8 @@ import faiss
 import numpy as np
 import pickle
 import os
-from typing import Tuple, Optional
-from src.infrastructure.config import FAISS_INDEX_DIR, FACE_INDEX_FILE, VISUAL_INDEX_FILE, TEXT_INDEX_FILE, FACE_SIMILARITY_THRESHOLD
+from typing import Tuple, Optional, List
+from src.infrastructure.config import FAISS_INDEX_DIR, FACE_INDEX_FILE, VISUAL_INDEX_FILE, TEXT_INDEX_FILE, FACE_SIMILARITY_THRESHOLD, FACE_MATCH_TOP_K
 import uuid
 
 class VectorStore:
@@ -82,26 +82,54 @@ class VectorStore:
         with open(mapping_file, 'wb') as f:
             pickle.dump(data, f)
     
-    def add_face_embedding(self, image_id: str, embedding: np.ndarray) -> Tuple[str, Optional[str]]:
-        """Add face embedding and return cluster_id and person_name if recognized"""
+    def add_face_embedding(self, image_id: str, embedding: np.ndarray) -> Tuple[str, Optional[str], Optional[str], Optional[List[str]], Optional[float], Optional[int], bool]:
+        """Add face embedding and return cluster_id, person_name, reference_cluster_id, reference_image_ids, match_confidence, consensus_count, is_new_cluster"""
         embedding = embedding.reshape(1, -1).astype('float32')
         
-        # Search for similar faces
+        # Multi-candidate face matching with cluster consensus:
+        # Instead of just checking the single best match, we evaluate multiple
+        # top matches to see if they belong to the same cluster (higher confidence)
         if self.face_index.ntotal > 0:
-            scores, indices = self.face_index.search(embedding, k=1)
-            if scores[0][0] > FACE_SIMILARITY_THRESHOLD:
-                # Found similar face, get cluster
-                similar_idx = indices[0][0]
-                for cluster_id, face_indices in self.face_clusters.items():
-                    if similar_idx in face_indices:
-                        # Add to existing cluster
-                        new_idx = self.face_index.ntotal
-                        self.face_index.add(embedding)
-                        self.face_id_mapping[new_idx] = image_id
-                        self.face_clusters[cluster_id].append(new_idx)
-                        self._save_indices()
-                        person_name = self.face_cluster_names.get(cluster_id)
-                        return cluster_id, person_name
+            k = min(FACE_MATCH_TOP_K, self.face_index.ntotal)
+            scores, indices = self.face_index.search(embedding, k=k)
+            
+            # Count matches per cluster above threshold
+            cluster_matches = {}
+            best_match_idx = None
+            best_score = 0
+            
+            # Evaluate each of the top-k matches
+            for i in range(k):
+                if scores[0][i] > FACE_SIMILARITY_THRESHOLD:
+                    idx = indices[0][i]
+                    # Find which cluster this face belongs to
+                    for cluster_id, face_indices in self.face_clusters.items():
+                        if idx in face_indices:
+                            if cluster_id not in cluster_matches:
+                                cluster_matches[cluster_id] = []
+                            cluster_matches[cluster_id].append((idx, scores[0][i]))
+                            
+                            # Track best overall match for reference
+                            if scores[0][i] > best_score:
+                                best_score = scores[0][i]
+                                best_match_idx = idx
+                            break
+            
+            # Choose cluster with most matches (consensus approach)
+            # This is more reliable than single-match decisions
+            if cluster_matches:
+                best_cluster = max(cluster_matches.keys(), key=lambda c: len(cluster_matches[c]))
+                reference_image_ids = [self.face_id_mapping.get(idx) for idx, _ in cluster_matches[best_cluster]]
+                consensus_count = len(cluster_matches[best_cluster])
+                
+                # Add to existing cluster
+                new_idx = self.face_index.ntotal
+                self.face_index.add(embedding)
+                self.face_id_mapping[new_idx] = image_id
+                self.face_clusters[best_cluster].append(new_idx)
+                self._save_indices()
+                person_name = self.face_cluster_names.get(best_cluster)
+                return best_cluster, person_name, best_cluster, reference_image_ids, best_score, consensus_count, False
         
         # Create new cluster
         cluster_id = f"cluster_{uuid.uuid4().hex[:8]}"
@@ -110,7 +138,7 @@ class VectorStore:
         self.face_id_mapping[new_idx] = image_id
         self.face_clusters[cluster_id] = [new_idx]
         self._save_indices()
-        return cluster_id, None
+        return cluster_id, None, None, None, None, None, True
     
     def add_visual_embedding(self, image_id: str, embedding: np.ndarray):
         """Add visual similarity embedding"""

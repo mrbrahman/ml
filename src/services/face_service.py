@@ -17,7 +17,7 @@ def recognize_faces(image_id: str, image_path: str) -> FaceRecognitionResponse:
     # Process each face with fresh embeddings
     faces_info = []
     for face_data in faces_data:
-        cluster_id, person_name = vector_store.add_face_embedding(
+        cluster_id, person_name, reference_cluster_id, reference_image_ids, match_confidence, consensus_count, is_new_cluster = vector_store.add_face_embedding(
             image_id, 
             face_data['embedding']
         )
@@ -30,7 +30,12 @@ def recognize_faces(image_id: str, image_path: str) -> FaceRecognitionResponse:
             gender=face_data.get('gender'),
             age=face_data.get('age'),
             landmarks=face_data.get('landmarks'),
-            pose=face_data.get('pose')
+            pose=face_data.get('pose'),
+            reference_cluster_id=reference_cluster_id,
+            reference_image_ids=reference_image_ids,
+            match_confidence=match_confidence,
+            consensus_count=consensus_count,
+            is_new_cluster=is_new_cluster
         ))
     
     return FaceRecognitionResponse(
@@ -102,7 +107,7 @@ def _train_from_directory(dataset_path: str) -> bool:
             
             # Add all embeddings and track created clusters
             for i, embedding in enumerate(person_embeddings):
-                cluster_id, _ = vector_store.add_face_embedding(
+                cluster_id, _, _, _, _, _, _ = vector_store.add_face_embedding(
                     f"training_{person_name}_{i}", 
                     embedding
                 )
@@ -162,7 +167,7 @@ def _train_from_json(json_path: str) -> bool:
             
             # Add all embeddings and track created clusters
             for i, embedding in enumerate(person_embeddings):
-                cluster_id, _ = vector_store.add_face_embedding(
+                cluster_id, _, _, _, _, _, _ = vector_store.add_face_embedding(
                     f"training_{person_name}_{i}", 
                     embedding
                 )

@@ -1,11 +1,46 @@
 import cv2
 from src.infrastructure.model_manager import model_manager
 
-def detect_faces(image_path):
-    """Detect faces and return embeddings with bounding boxes and attributes"""
+def _detect_faces_aggressive(image_path, include_attributes=True):
+    """Picasa-like aggressive face detection with quality filtering"""
     face_app = model_manager.get_face_model()
     img = cv2.imread(image_path)
-    faces = face_app.get(img)
+    
+    # Store original settings
+    original_thresh = getattr(face_app.det_model, 'nms_thresh', None)
+    original_det_thresh = getattr(face_app.det_model, '_score_thresh', None)
+    
+    try:
+        # Aggressive detection settings
+        if hasattr(face_app.det_model, 'nms_thresh'):
+            face_app.det_model.nms_thresh = 0.1
+        if hasattr(face_app.det_model, '_score_thresh'):
+            face_app.det_model._score_thresh = 0.02
+        
+        # Try multiple approaches
+        attempts = [
+            img,  # Original
+            cv2.equalizeHist(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)),  # Enhanced contrast
+            cv2.resize(img, (320, 320)),  # Smaller scale
+            cv2.resize(img, (800, 800)),  # Larger scale
+        ]
+        
+        faces = []
+        for attempt_img in attempts:
+            if len(attempt_img.shape) == 2:  # Convert grayscale back to BGR
+                attempt_img = cv2.cvtColor(attempt_img, cv2.COLOR_GRAY2BGR)
+            
+            detected = face_app.get(attempt_img)
+            if detected:
+                faces.extend(detected)
+                break  # Use first successful detection
+                
+    finally:
+        # Restore original settings
+        if original_thresh is not None:
+            face_app.det_model.nms_thresh = original_thresh
+        if original_det_thresh is not None:
+            face_app.det_model._score_thresh = original_det_thresh
     
     results = []
     for face in faces:
@@ -15,57 +50,39 @@ def detect_faces(image_path):
             'embedding': face.normed_embedding
         }
         
-        # Add all available attributes
-        if hasattr(face, 'gender') and face.gender is not None:
-            face_data['gender'] = 'M' if int(face.gender) == 1 else 'F'  # M=male, F=female
-        if hasattr(face, 'age') and face.age is not None:
-            face_data['age'] = int(face.age)
-        # Basic landmarks and pose
-        if hasattr(face, 'kps') and face.kps is not None:
-            kps = face.kps.tolist()
-            if len(kps) >= 5:
-                face_data['landmarks'] = {
-                    'left_eye': kps[0],
-                    'right_eye': kps[1], 
-                    'nose': kps[2],
-                    'left_mouth': kps[3],
-                    'right_mouth': kps[4]
-                }
-        if hasattr(face, 'pose') and face.pose is not None:
-            pose = face.pose.tolist()
-            if len(pose) >= 3:
-                face_data['pose'] = {
-                    'pitch': pose[0],  # Up/down rotation
-                    'yaw': pose[1],    # Left/right rotation  
-                    'roll': pose[2]    # Tilt rotation
-                }
+        # Add attributes only if requested
+        if include_attributes:
+            if hasattr(face, 'gender') and face.gender is not None:
+                face_data['gender'] = 'M' if int(face.gender) == 1 else 'F'
+            if hasattr(face, 'age') and face.age is not None:
+                face_data['age'] = int(face.age)
+            if hasattr(face, 'kps') and face.kps is not None:
+                kps = face.kps.tolist()
+                if len(kps) >= 5:
+                    face_data['landmarks'] = {
+                        'left_eye': kps[0],
+                        'right_eye': kps[1], 
+                        'nose': kps[2],
+                        'left_mouth': kps[3],
+                        'right_mouth': kps[4]
+                    }
+            if hasattr(face, 'pose') and face.pose is not None:
+                pose = face.pose.tolist()
+                if len(pose) >= 3:
+                    face_data['pose'] = {
+                        'pitch': pose[0],
+                        'yaw': pose[1],
+                        'roll': pose[2]
+                    }
         
         results.append(face_data)
+    
     return results
 
+def detect_faces(image_path):
+    """Detect faces with full attributes for regular use"""
+    return _detect_faces_aggressive(image_path, include_attributes=True)
+
 def detect_faces_for_training(image_path):
-    """Detect faces with lower thresholds for training - consumes more samples including blurry ones"""
-    face_app = model_manager.get_face_model_for_training()
-    img = cv2.imread(image_path)
-    
-    # Use training model with lower thresholds
-    faces = face_app.get(img, max_num=1)
-    
-    # If no faces found, try with enhanced preprocessing
-    if not faces:
-        # Try histogram equalization to improve contrast for blurry images
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        enhanced = cv2.equalizeHist(gray)
-        enhanced_img = cv2.cvtColor(enhanced, cv2.COLOR_GRAY2BGR)
-        faces = face_app.get(enhanced_img, max_num=1)
-    
-    results = []
-    for face in faces:
-        face_data = {
-            'bbox': face.bbox.tolist(),
-            'confidence': float(face.det_score),
-            'embedding': face.normed_embedding
-        }
-        results.append(face_data)
-    
-    return results
+    """Detect faces for training (embeddings only)"""
+    return _detect_faces_aggressive(image_path, include_attributes=False)
