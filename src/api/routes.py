@@ -5,7 +5,7 @@ import torch
 from src.schemas.models import (
     AnalyzeImageRequest, AnalyzeImageResponse, NameClusterRequest, 
     NameClusterResponse, SearchRequest, SearchResponse, TrainRequest, 
-    TrainResponse, FaceRecognitionResponse, InfoResponse, UpdatePersonNameRequest,
+    TrainResponse, FaceRecognitionResponse, FaceRecognitionRequest, InfoResponse, UpdatePersonNameRequest,
     CorrectFaceAssignmentRequest, CorrectFaceAssignmentResponse
 )
 from src.services.image_service import analyze_image, get_similar_images
@@ -38,14 +38,14 @@ async def analyze_image_endpoint(request: AnalyzeImageRequest):
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 
 @app.post("/faces/recognize", response_model=FaceRecognitionResponse)
-async def recognize_faces_endpoint(request: AnalyzeImageRequest):
+async def recognize_faces_endpoint(request: FaceRecognitionRequest):
     """Face recognition only - detect and identify faces without image description"""
     
     if not os.path.exists(request.image_path):
         raise HTTPException(status_code=404, detail="Image file not found")
     
     try:
-        return recognize_faces(request.image_id, request.image_path)
+        return recognize_faces(request.image_id, request.image_path, request.save_annotated)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Face recognition failed: {str(e)}")
 

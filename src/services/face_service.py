@@ -2,11 +2,12 @@ import os
 import json
 from pathlib import Path
 from src.core.face_detector import detect_faces, detect_faces_for_training
+from src.core.image_enricher import create_enriched_image
 from src.data.vector_store import vector_store
 from src.schemas.models import FaceInfo, FaceRecognitionResponse, InfoResponse, ClusterInfo, CorrectFaceAssignmentResponse
 from src.infrastructure.config import MODEL_NAMES
 
-def recognize_faces(image_id: str, image_path: str) -> FaceRecognitionResponse:
+def recognize_faces(image_id: str, image_path: str, save_annotated: bool = False) -> FaceRecognitionResponse:
     """Face recognition only - detect and identify faces without image description"""
     # Remove existing embeddings for this image first
     vector_store.remove_image_embeddings(image_id)
@@ -37,6 +38,10 @@ def recognize_faces(image_id: str, image_path: str) -> FaceRecognitionResponse:
             consensus_count=consensus_count,
             is_new_cluster=is_new_cluster
         ))
+    
+    # Generate annotated image if requested
+    if save_annotated and faces_info:
+        create_enriched_image(image_path, faces_info)
     
     return FaceRecognitionResponse(
         image_id=image_id,

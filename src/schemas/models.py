@@ -5,6 +5,11 @@ class AnalyzeImageRequest(BaseModel):
     image_id: str
     image_path: str
 
+class FaceRecognitionRequest(BaseModel):
+    image_id: str
+    image_path: str
+    save_annotated: Optional[bool] = False
+
 class FaceInfo(BaseModel):
     bbox: List[float]  # [x, y, w, h]
     confidence: float
