@@ -42,9 +42,33 @@ Analyze an image for faces and generate description.
 ```json
 {
   "image_id": "uuid-from-nodejs",
-  "image_path": "/path/to/image.jpg"
+  "image_path": "/path/to/image.jpg",
+  "save_annotated": false,
+  "xmp_faces": [
+    {
+      "name": "John Doe",
+      "x": 0.45,
+      "y": 0.25,
+      "w": 0.12,
+      "h": 0.18
+    }
+  ],
+  "xmp_regions": {
+    "AppliedToDimensions": {"H": 2160, "Unit": "pixel", "W": 2880},
+    "RegionList": [
+      {
+        "Area": {"H": 0.0791667, "Unit": "normalized", "W": 0.0496528, "X": 0.673438, "Y": 0.477083},
+        "Name": "John Doe",
+        "Type": "Face"
+      }
+    ]
+  }
 }
 ```
+
+- `save_annotated` (optional): When `true`, saves an annotated copy of the image with bounding boxes and face labels to `data/annotated_images/`
+- `xmp_faces` (optional): Array of face regions from EXIF/XMP metadata for automatic face labeling
+- `xmp_regions` (optional): Raw XMP regions object from exiftool-vendored for automatic conversion and face labeling
 
 **Response:**
 ```json
@@ -70,7 +94,9 @@ Analyze an image for faces and generate description.
         "yaw": -5.2,
         "pitch": 2.1,
         "roll": 1.8
-      }
+      },
+      "xmp_matched": true,
+      "xmp_match_confidence": 0.87
     }
   ],
   "description": "A detailed description of the image",
@@ -88,9 +114,33 @@ Face recognition only - detect and identify faces without image description.
 ```json
 {
   "image_id": "uuid-from-nodejs",
-  "image_path": "/path/to/image.jpg"
+  "image_path": "/path/to/image.jpg",
+  "save_annotated": false,
+  "xmp_faces": [
+    {
+      "name": "John Doe",
+      "x": 0.45,
+      "y": 0.25,
+      "w": 0.12,
+      "h": 0.18
+    }
+  ],
+  "xmp_regions": {
+    "AppliedToDimensions": {"H": 2160, "Unit": "pixel", "W": 2880},
+    "RegionList": [
+      {
+        "Area": {"H": 0.0791667, "Unit": "normalized", "W": 0.0496528, "X": 0.673438, "Y": 0.477083},
+        "Name": "John Doe",
+        "Type": "Face"
+      }
+    ]
+  }
 }
 ```
+
+- `save_annotated` (optional): When `true`, saves an annotated copy of the image with bounding boxes and face labels to `data/annotated_images/`
+- `xmp_faces` (optional): Array of face regions from EXIF/XMP metadata for automatic face labeling
+- `xmp_regions` (optional): Raw XMP regions object from exiftool-vendored for automatic conversion and face labeling
 
 **Response:**
 ```json
@@ -116,7 +166,9 @@ Face recognition only - detect and identify faces without image description.
         "yaw": -5.2,
         "pitch": 2.1,
         "roll": 1.8
-      }
+      },
+      "xmp_matched": true,
+      "xmp_match_confidence": 0.87
     }
   ],
   "models_used": {
@@ -309,6 +361,7 @@ project/
 │   └── schemas/           # API request/response models
 ├── data/                  # Runtime data storage
 │   ├── faiss_indices/     # FAISS vector indices
+│   ├── annotated_images/  # Annotated images with face boxes
 │   └── training_data/     # Training datasets
 ├── main.py                # Application entry point
 ├── download_all_models.py # Model download utility

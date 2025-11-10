@@ -2,11 +2,12 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import os
 import torch
+from typing import List, Optional
 from src.schemas.models import (
     AnalyzeImageRequest, AnalyzeImageResponse, NameClusterRequest, 
     NameClusterResponse, SearchRequest, SearchResponse, TrainRequest, 
-    TrainResponse, FaceRecognitionResponse, FaceRecognitionRequest, InfoResponse, UpdatePersonNameRequest,
-    CorrectFaceAssignmentRequest, CorrectFaceAssignmentResponse
+    TrainResponse, FaceRecognitionResponse, InfoResponse, UpdatePersonNameRequest,
+    CorrectFaceAssignmentRequest, CorrectFaceAssignmentResponse, XmpFace
 )
 from src.services.image_service import analyze_image, get_similar_images
 from src.services.face_service import recognize_faces, assign_name_to_cluster, train_from_dataset, get_cluster_info, update_cluster_name_by_old_name, correct_face_assignment
@@ -33,19 +34,21 @@ async def analyze_image_endpoint(request: AnalyzeImageRequest):
         raise HTTPException(status_code=404, detail="Image file not found")
     
     try:
-        return analyze_image(request.image_id, request.image_path)
+        return analyze_image(request.image_id, request.image_path, request.xmp_faces, request.xmp_regions, request.save_annotated)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 
 @app.post("/faces/recognize", response_model=FaceRecognitionResponse)
-async def recognize_faces_endpoint(request: FaceRecognitionRequest):
+async def recognize_faces_endpoint(request: AnalyzeImageRequest):
     """Face recognition only - detect and identify faces without image description"""
     
     if not os.path.exists(request.image_path):
         raise HTTPException(status_code=404, detail="Image file not found")
     
+
+    
     try:
-        return recognize_faces(request.image_id, request.image_path, request.save_annotated)
+        return recognize_faces(request.image_id, request.image_path, request.save_annotated, request.xmp_faces, request.xmp_regions)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Face recognition failed: {str(e)}")
 

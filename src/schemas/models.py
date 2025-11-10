@@ -1,14 +1,19 @@
 from pydantic import BaseModel
 from typing import List, Optional
 
+class XmpFace(BaseModel):
+    name: str
+    x: float  # Normalized coordinates (0.0-1.0)
+    y: float
+    w: float
+    h: float
+
 class AnalyzeImageRequest(BaseModel):
     image_id: str
     image_path: str
-
-class FaceRecognitionRequest(BaseModel):
-    image_id: str
-    image_path: str
     save_annotated: Optional[bool] = False
+    xmp_faces: Optional[List[XmpFace]] = None
+    xmp_regions: Optional[dict] = None  # Raw XMP regions object from exiftool
 
 class FaceInfo(BaseModel):
     bbox: List[float]  # [x, y, w, h]
@@ -24,6 +29,8 @@ class FaceInfo(BaseModel):
     match_confidence: Optional[float] = None  # Similarity score (0.0-1.0)
     consensus_count: Optional[int] = None  # How many faces agreed on match
     is_new_cluster: bool = False  # True if this created a new cluster
+    xmp_matched: Optional[bool] = None  # True if matched with XMP face data
+    xmp_match_confidence: Optional[float] = None  # IoU confidence for XMP match
 
 class AnalyzeImageResponse(BaseModel):
     image_id: str
