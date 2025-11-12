@@ -32,13 +32,6 @@ class FaceInfo(BaseModel):
     xmp_matched: Optional[bool] = None  # True if matched with XMP face data
     xmp_match_confidence: Optional[float] = None  # IoU confidence for XMP match
 
-class AnalyzeImageResponse(BaseModel):
-    image_id: str
-    image_path: str
-    faces: List[FaceInfo]
-    description: str
-    models_used: dict
-
 class NameClusterRequest(BaseModel):
     name: str
 
@@ -89,3 +82,28 @@ class CorrectFaceAssignmentResponse(BaseModel):
     message: str
     cluster_id: str
     action_taken: str  # "moved_to_existing", "created_new", "already_correct"
+
+class ImageCaptionRequest(BaseModel):
+    image_id: str
+    image_path: str
+
+class ImageCaptionResponse(BaseModel):
+    image_id: str
+    image_path: str
+    description: str
+    models_used: dict
+
+class ImageEncodeRequest(BaseModel):
+    image_id: str
+    image_path: str
+
+class ImageEncodeResponse(BaseModel):
+    image_id: str
+    image_path: str
+    embedding_stored: bool
+    models_used: dict
+
+class CompositeAnalyzeResponse(BaseModel):
+    face_recognition: FaceRecognitionResponse
+    image_caption: ImageCaptionResponse
+    image_encode: ImageEncodeResponse

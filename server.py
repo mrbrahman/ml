@@ -5,7 +5,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.schemas import *
-from app.services import *
+from app.services import analyze_image, recognize_faces, caption_image, encode_image, search_by_text, find_similar_images, get_cluster_info
 from app.core.image_analysis import search
 from app.core import model_loader
 from app.core.face_recognition import storage as face_storage
@@ -22,7 +22,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.post("/analyze", response_model=AnalyzeImageResponse)
+@app.post("/analyze", response_model=CompositeAnalyzeResponse)
 async def analyze_image_endpoint(request: AnalyzeImageRequest):
     if not os.path.exists(request.image_path):
         raise HTTPException(status_code=404, detail="Image file not found")
@@ -41,6 +41,26 @@ async def recognize_faces_endpoint(request: AnalyzeImageRequest):
         return recognize_faces(request.image_id, request.image_path, request.save_annotated, request.xmp_faces, request.xmp_regions)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Face recognition failed: {str(e)}")
+
+@app.post("/images/caption", response_model=ImageCaptionResponse)
+async def caption_image_endpoint(request: ImageCaptionRequest):
+    if not os.path.exists(request.image_path):
+        raise HTTPException(status_code=404, detail="Image file not found")
+    
+    try:
+        return caption_image(request.image_id, request.image_path)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Image captioning failed: {str(e)}")
+
+@app.post("/images/encode", response_model=ImageEncodeResponse)
+async def encode_image_endpoint(request: ImageEncodeRequest):
+    if not os.path.exists(request.image_path):
+        raise HTTPException(status_code=404, detail="Image file not found")
+    
+    try:
+        return encode_image(request.image_id, request.image_path)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Image encoding failed: {str(e)}")
 
 @app.put("/faces/{cluster_id}", response_model=NameClusterResponse)
 async def name_face_cluster_endpoint(cluster_id: str, request: NameClusterRequest):

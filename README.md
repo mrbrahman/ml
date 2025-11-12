@@ -35,79 +35,9 @@ python server.py
 
 ## API Endpoints
 
-### POST /analyze
-Analyze an image for faces and generate description.
+### Face Recognition
 
-**Request:**
-```json
-{
-  "image_id": "uuid-from-nodejs",
-  "image_path": "/path/to/image.jpg",
-  "save_annotated": false,
-  "xmp_faces": [
-    {
-      "name": "John Doe",
-      "x": 0.45,
-      "y": 0.25,
-      "w": 0.12,
-      "h": 0.18
-    }
-  ],
-  "xmp_regions": {
-    "AppliedToDimensions": {"H": 2160, "Unit": "pixel", "W": 2880},
-    "RegionList": [
-      {
-        "Area": {"H": 0.0791667, "Unit": "normalized", "W": 0.0496528, "X": 0.673438, "Y": 0.477083},
-        "Name": "John Doe",
-        "Type": "Face"
-      }
-    ]
-  }
-}
-```
-
-- `save_annotated` (optional): When `true`, saves an annotated copy of the image with bounding boxes and face labels to `data/annotated_images/`
-- `xmp_faces` (optional): Array of face regions from EXIF/XMP metadata for automatic face labeling
-- `xmp_regions` (optional): Raw XMP regions object from exiftool-vendored for automatic conversion and face labeling
-
-**Response:**
-```json
-{
-  "image_id": "uuid-from-nodejs",
-  "image_path": "/path/to/image.jpg",
-  "faces": [
-    {
-      "bbox": [x, y, w, h],
-      "confidence": 0.95,
-      "cluster_id": "cluster_abc123",
-      "person_name": null,
-      "gender": "M",
-      "age": 25,
-      "landmarks": {
-        "left_eye": [x1, y1],
-        "right_eye": [x2, y2],
-        "nose": [x3, y3],
-        "left_mouth": [x4, y4],
-        "right_mouth": [x5, y5]
-      },
-      "pose": {
-        "yaw": -5.2,
-        "pitch": 2.1,
-        "roll": 1.8
-      },
-      "xmp_matched": true,
-      "xmp_match_confidence": 0.87
-    }
-  ],
-  "description": "A detailed description of the image",
-  "models_used": {
-    "face_detection": "buffalo_l",
-    "image_captioning": "blip2-opt-2.7b"
-  }
-}
-```
-
-### POST /faces/recognize
+#### POST /faces/recognize
 Face recognition only - detect and identify faces without image description.
 
 **Request:**
@@ -177,7 +107,7 @@ Face recognition only - detect and identify faces without image description.
 }
 ```
 
-### PUT /faces/{cluster_id}
+#### PUT /faces/{cluster_id}
 Assign a name to a face cluster.
 
 **Request:**
@@ -187,7 +117,7 @@ Assign a name to a face cluster.
 }
 ```
 
-### POST /faces/update-name
+#### POST /faces/update-name
 Update the name of an existing face cluster.
 
 **Request:**
@@ -206,7 +136,7 @@ Update the name of an existing face cluster.
 }
 ```
 
-### POST /faces/correct
+#### POST /faces/correct
 Correct a face assignment by providing the correct person name. The system will automatically move the face to the best matching cluster for that person or create a new one.
 
 **Request:**
@@ -227,7 +157,170 @@ Correct a face assignment by providing the correct person name. The system will 
 }
 ```
 
-### POST /search/text
+#### GET /faceinfo
+Get information about face clusters and recognition statistics.
+
+**Response:**
+```json
+{
+  "total_clusters": 15,
+  "named_clusters": 8,
+  "clusters": [
+    {
+      "cluster_id": "cluster_abc123",
+      "name": "John Doe",
+      "face_count": 12
+    },
+    {
+      "cluster_id": "cluster_def456",
+      "name": null,
+      "face_count": 3
+    }
+  ]
+}
+```
+
+### Image Analysis
+
+#### POST /images/caption
+Generate image description using BLIP-2.
+
+**Request:**
+```json
+{
+  "image_id": "uuid-from-nodejs",
+  "image_path": "/path/to/image.jpg"
+}
+```
+
+**Response:**
+```json
+{
+  "image_id": "uuid-from-nodejs",
+  "image_path": "/path/to/image.jpg",
+  "description": "A detailed description of the image",
+  "models_used": {
+    "image_captioning": "blip2-opt-2.7b"
+  }
+}
+```
+
+#### POST /images/encode
+Generate and store image embeddings using CLIP for search functionality.
+
+**Request:**
+```json
+{
+  "image_id": "uuid-from-nodejs",
+  "image_path": "/path/to/image.jpg"
+}
+```
+
+**Response:**
+```json
+{
+  "image_id": "uuid-from-nodejs",
+  "image_path": "/path/to/image.jpg",
+  "embedding_stored": true,
+  "models_used": {
+    "image_encoding": "clip-vit-base-patch32"
+  }
+}
+```
+
+### Combined Analysis
+
+#### POST /analyze
+Analyze an image for faces and generate description. This endpoint combines the functionality of `/faces/recognize`, `/images/caption`, and `/images/encode`.
+
+**Request:**
+```json
+{
+  "image_id": "uuid-from-nodejs",
+  "image_path": "/path/to/image.jpg",
+  "save_annotated": false,
+  "xmp_faces": [
+    {
+      "name": "John Doe",
+      "x": 0.45,
+      "y": 0.25,
+      "w": 0.12,
+      "h": 0.18
+    }
+  ],
+  "xmp_regions": {
+    "AppliedToDimensions": {"H": 2160, "Unit": "pixel", "W": 2880},
+    "RegionList": [
+      {
+        "Area": {"H": 0.0791667, "Unit": "normalized", "W": 0.0496528, "X": 0.673438, "Y": 0.477083},
+        "Name": "John Doe",
+        "Type": "Face"
+      }
+    ]
+  }
+}
+```
+
+- `save_annotated` (optional): When `true`, saves an annotated copy of the image with bounding boxes and face labels to `data/annotated_images/`
+- `xmp_faces` (optional): Array of face regions from EXIF/XMP metadata for automatic face labeling
+- `xmp_regions` (optional): Raw XMP regions object from exiftool-vendored for automatic conversion and face labeling
+
+**Response:**
+```json
+{
+  "face_recognition": {
+    "image_id": "uuid-from-nodejs",
+    "image_path": "/path/to/image.jpg",
+    "faces": [
+      {
+        "bbox": [x, y, w, h],
+        "confidence": 0.95,
+        "cluster_id": "cluster_abc123",
+        "person_name": null,
+        "gender": "M",
+        "age": 25,
+        "landmarks": {
+          "left_eye": [x1, y1],
+          "right_eye": [x2, y2],
+          "nose": [x3, y3],
+          "left_mouth": [x4, y4],
+          "right_mouth": [x5, y5]
+        },
+        "pose": {
+          "yaw": -5.2,
+          "pitch": 2.1,
+          "roll": 1.8
+        },
+        "xmp_matched": true,
+        "xmp_match_confidence": 0.87
+      }
+    ],
+    "models_used": {
+      "face_detection": "buffalo_l"
+    }
+  },
+  "image_caption": {
+    "image_id": "uuid-from-nodejs",
+    "image_path": "/path/to/image.jpg",
+    "description": "A detailed description of the image",
+    "models_used": {
+      "image_captioning": "blip2-opt-2.7b"
+    }
+  },
+  "image_encode": {
+    "image_id": "uuid-from-nodejs",
+    "image_path": "/path/to/image.jpg",
+    "embedding_stored": true,
+    "models_used": {
+      "image_encoding": "clip-vit-base-patch32"
+    }
+  }
+}
+```
+
+### Search
+
+#### POST /search/text
 Search for images using text queries.
 
 **Request:**
@@ -251,7 +344,7 @@ Search for images using text queries.
 }
 ```
 
-### POST /search/similar
+#### POST /search/similar
 Find visually similar images.
 
 **Request:**
@@ -262,30 +355,9 @@ Find visually similar images.
 }
 ```
 
-### GET /faceinfo
-Get information about face clusters and recognition statistics.
+### System
 
-**Response:**
-```json
-{
-  "total_clusters": 15,
-  "named_clusters": 8,
-  "clusters": [
-    {
-      "cluster_id": "cluster_abc123",
-      "name": "John Doe",
-      "face_count": 12
-    },
-    {
-      "cluster_id": "cluster_def456",
-      "name": null,
-      "face_count": 3
-    }
-  ]
-}
-```
-
-### GET /health
+#### GET /health
 Health check endpoint with detailed system information.
 
 **Response:**
@@ -367,7 +439,7 @@ training_data/
     └── photo2.jpg
 ```
 
-This approach had limitations as InsightFace often failed to detect faces in small thumbnail images, while successfully detecting the same faces in full-resolution photos.
+... this approach had limitations as InsightFace often failed to detect faces in small thumbnail images, while successfully detecting the same faces in full-resolution photos.
 
 **Current Training Approach:**
 Training now occurs automatically through the `/analyze` and `/faces/recognize` endpoints when `xmp_faces` or `xmp_regions` metadata is provided. This allows the system to learn from full-resolution images with labeled face regions.
@@ -377,8 +449,6 @@ Training now occurs automatically through the `/analyze` and `/faces/recognize` 
 2. Then, process unlabeled images for automatic face clustering and recognition
 
 This approach leverages the superior face detection capabilities on full images while maintaining accurate face labeling through metadata.
-
-
 
 ## Storage
 
