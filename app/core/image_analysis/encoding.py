@@ -5,14 +5,14 @@ from app.core.model_loader import get_clip_model
 from app.config import DEVICE
 
 def encode_image(image_path):
-    """Get CLIP embedding for text-searchable similarity with fallback"""
+    """Get CLIP embedding for text-searchable similarity"""
     clip_processor, clip_model = get_clip_model()
     
+    if clip_processor == "FAILED" or clip_model == "FAILED":
+        return None
+    
     if clip_processor is None or clip_model is None:
-        print("Using fallback random embedding for CLIP")
-        embedding = np.random.randn(512).astype('float32')
-        embedding = embedding / np.linalg.norm(embedding)
-        return embedding
+        return None
     
     try:
         image = Image.open(image_path).convert('RGB')
@@ -28,19 +28,17 @@ def encode_image(image_path):
         return image_features.cpu().numpy().flatten()
     except Exception as e:
         print(f"Error generating CLIP embedding: {e}")
-        embedding = np.random.randn(512).astype('float32')
-        embedding = embedding / np.linalg.norm(embedding)
-        return embedding
+        return None
 
 def encode_text(text):
     """Get CLIP text embedding for search queries"""
     clip_processor, clip_model = get_clip_model()
     
+    if clip_processor == "FAILED" or clip_model == "FAILED":
+        return None
+    
     if clip_processor is None or clip_model is None:
-        print("Using fallback random embedding for text")
-        embedding = np.random.randn(512).astype('float32')
-        embedding = embedding / np.linalg.norm(embedding)
-        return embedding
+        return None
     
     try:
         inputs = clip_processor(text=[text], return_tensors="pt", padding=True)
@@ -55,6 +53,4 @@ def encode_text(text):
         return text_features.cpu().numpy().flatten()
     except Exception as e:
         print(f"Error generating text embedding: {e}")
-        embedding = np.random.randn(512).astype('float32')
-        embedding = embedding / np.linalg.norm(embedding)
-        return embedding
+        return None

@@ -55,7 +55,7 @@ def get_face_model():
     return _face_app
 
 def get_blip_model():
-    """Lazy load BLIP model with fallback"""
+    """Lazy load BLIP model"""
     global _blip_processor, _blip_model
     if _blip_processor is None or _blip_model is None:
         print("Loading BLIP model...")
@@ -75,13 +75,12 @@ def get_blip_model():
             print("BLIP model loaded successfully")
         except Exception as e:
             print(f"Failed to load BLIP model: {e}")
-            print("Using fallback: returning generic descriptions")
-            _blip_processor = None
-            _blip_model = None
+            _blip_processor = "FAILED"
+            _blip_model = "FAILED"
     return _blip_processor, _blip_model
 
 def get_clip_model():
-    """Lazy load CLIP model with fallback"""
+    """Lazy load CLIP model"""
     global _clip_processor, _clip_model
     if _clip_processor is None or _clip_model is None:
         print("Loading CLIP model...")
@@ -101,9 +100,8 @@ def get_clip_model():
             print("CLIP model loaded successfully")
         except Exception as e:
             print(f"Failed to load CLIP model: {e}")
-            print("Using fallback: generating random embeddings")
-            _clip_processor = None
-            _clip_model = None
+            _clip_processor = "FAILED"
+            _clip_model = "FAILED"
     return _clip_processor, _clip_model
 
 def is_face_model_loaded():
@@ -112,8 +110,16 @@ def is_face_model_loaded():
 
 def is_blip_model_loaded():
     """Check if BLIP model is loaded"""
-    return _blip_model is not None
+    return _blip_model is not None and _blip_model != "FAILED"
 
 def is_clip_model_loaded():
     """Check if CLIP model is loaded"""
-    return _clip_model is not None
+    return _clip_model is not None and _clip_model != "FAILED"
+
+def get_model_status():
+    """Get detailed model loading status"""
+    return {
+        "face": "loaded" if _face_app is not None else "not_loaded",
+        "blip": "loaded" if (_blip_model is not None and _blip_model != "FAILED") else ("failed" if _blip_model == "FAILED" else "not_loaded"),
+        "clip": "loaded" if (_clip_model is not None and _clip_model != "FAILED") else ("failed" if _clip_model == "FAILED" else "not_loaded")
+    }

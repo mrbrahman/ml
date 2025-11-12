@@ -85,6 +85,10 @@ def recognize_faces(image_id: str, image_path: str, save_annotated: bool = False
 def search_by_text(query: str, limit: int = 10):
     """Search for images using text query"""
     text_embedding = encoding.encode_text(query)
+    
+    if text_embedding is None:
+        return []
+    
     results = search.search_text(text_embedding, k=limit)
     
     search_results = [
@@ -97,6 +101,10 @@ def search_by_text(query: str, limit: int = 10):
 def find_similar_images(image_path: str, limit: int = 10):
     """Find visually similar images"""
     clip_embedding = encoding.encode_image(image_path)
+    
+    if clip_embedding is None:
+        return []
+    
     results = search.search_visual(clip_embedding, k=limit)
     
     search_results = [
@@ -133,23 +141,37 @@ def caption_image(image_id: str, image_path: str) -> ImageCaptionResponse:
     """Generate image caption using BLIP"""
     description = captioning.generate_description(image_path)
     
+    # Check if description indicates model failure
+    if "failed to load" in description or "not available" in description or "Error generating" in description:
+        model_name = "FAILED"
+    else:
+        model_name = MODEL_NAMES["image_description"]
+    
     return ImageCaptionResponse(
         image_id=image_id,
         image_path=image_path,
         description=description,
-        models_used={"image_captioning": MODEL_NAMES["image_description"]}
+        models_used={"image_captioning": model_name}
     )
 
 def encode_image(image_id: str, image_path: str) -> ImageEncodeResponse:
     """Generate and store image embedding using CLIP"""
     image_storage.remove_search_embeddings(image_id)
+    
     clip_embedding = encoding.encode_image(image_path)
-    image_storage.add_visual_embedding(image_id, clip_embedding)
-    image_storage.add_text_embedding(image_id, clip_embedding)
+    
+    if clip_embedding is not None:
+        image_storage.add_visual_embedding(image_id, clip_embedding)
+        image_storage.add_text_embedding(image_id, clip_embedding)
+        embedding_stored = True
+        model_name = MODEL_NAMES.get("image_encoding", "clip-vit-base-patch32")
+    else:
+        embedding_stored = False
+        model_name = "FAILED"
     
     return ImageEncodeResponse(
         image_id=image_id,
         image_path=image_path,
-        embedding_stored=True,
-        models_used={"image_encoding": MODEL_NAMES.get("image_encoding", "clip-vit-base-patch32")}
+        embedding_stored=embedding_stored,
+        models_used={"image_encoding": model_name}
     )

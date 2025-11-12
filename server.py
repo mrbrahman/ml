@@ -148,17 +148,15 @@ async def health_check():
             except Exception as e:
                 gpu_info = {"error": f"Failed to get GPU info: {str(e)}"}
         
+        model_status = model_loader.get_model_status()
+        
         return {
             "status": "healthy", 
             "device": device_info,
             "cuda_available": cuda_available,
             "gpu_info": gpu_info,
             "pytorch_version": torch.__version__,
-            "models_loaded": {
-                "face": model_loader.is_face_model_loaded(),
-                "blip": model_loader.is_blip_model_loaded(),
-                "clip": model_loader.is_clip_model_loaded()
-            }
+            "model_status": model_status
         }
     except Exception as e:
         return {"status": "error", "message": str(e)}
