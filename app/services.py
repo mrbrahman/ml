@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 from typing import List, Optional
 from app.schemas import *
-from app.core.face_recognition.detection import detect_faces, detect_faces_for_training
+from app.core.face_recognition.detection import detect_faces
 from app.core.image_analysis.captioning import generate_description
 from app.core.image_analysis.encoding import encode_image, encode_text
 from app.core.image_analysis import search
@@ -125,81 +125,7 @@ def recognize_faces(image_id: str, image_path: str, save_annotated: bool = False
         models_used={"face_detection": MODEL_NAMES["face_detection"]}
     )
 
-def train_from_dataset(dataset_path: str, dataset_type: str = "directory") -> bool:
-    """Train face recognition from dataset"""
-    if dataset_type == "directory":
-        return _train_from_directory(dataset_path)
-    elif dataset_type == "json":
-        return _train_from_json(dataset_path)
-    else:
-        raise ValueError("dataset_type must be 'directory' or 'json'")
 
-def _train_from_directory(dataset_path: str) -> bool:
-    dataset_path = Path(dataset_path)
-    if not dataset_path.exists():
-        return False
-    
-    for person_dir in dataset_path.iterdir():
-        if not person_dir.is_dir():
-            continue
-            
-        person_embeddings = []
-        for image_file in person_dir.glob("*.jpg"):
-            try:
-                faces_data = detect_faces_for_training(str(image_file))
-                if faces_data:
-                    face_data = max(faces_data, key=lambda x: x['confidence'])
-                    person_embeddings.append(face_data['embedding'])
-            except Exception:
-                continue
-        
-        if person_embeddings:
-            created_clusters = set()
-            for i, embedding in enumerate(person_embeddings):
-                cluster_id, _, _, _, _, _, _ = face_recognition.add_face_embedding(
-                    f"training_{person_dir.name}_{i}", embedding
-                )
-                created_clusters.add(cluster_id)
-            
-            for cluster_id in created_clusters:
-                face_storage.name_face_cluster(cluster_id, person_dir.name)
-    
-    return True
-
-def _train_from_json(json_path: str) -> bool:
-    json_path = Path(json_path)
-    if not json_path.exists():
-        return False
-    
-    with open(json_path, 'r') as f:
-        training_data = json.load(f)
-    
-    for person_name, image_paths in training_data.items():
-        person_embeddings = []
-        for image_path in image_paths:
-            if not os.path.exists(image_path):
-                continue
-            
-            try:
-                faces_data = detect_faces_for_training(image_path)
-                if faces_data:
-                    face_data = max(faces_data, key=lambda x: x['confidence'])
-                    person_embeddings.append(face_data['embedding'])
-            except Exception:
-                continue
-        
-        if person_embeddings:
-            created_clusters = set()
-            for i, embedding in enumerate(person_embeddings):
-                cluster_id, _, _, _, _, _, _ = face_recognition.add_face_embedding(
-                    f"training_{person_name}_{i}", embedding
-                )
-                created_clusters.add(cluster_id)
-            
-            for cluster_id in created_clusters:
-                face_storage.name_face_cluster(cluster_id, person_name)
-    
-    return True
 
 def search_by_text(query: str, limit: int = 10):
     """Search for images using text query"""

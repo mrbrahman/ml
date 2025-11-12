@@ -43,21 +43,7 @@ def detect_faces(image_path):
     
     return results
 
-def detect_faces_for_training(image_path):
-    """Detect faces for training (embeddings only)"""
-    face_app = get_face_model()
-    img = cv2.imread(image_path)
-    faces = face_app.get(img)
-    
-    results = []
-    for face in faces:
-        results.append({
-            'bbox': face.bbox.tolist(),
-            'confidence': float(face.det_score),
-            'embedding': face.normed_embedding
-        })
-    
-    return results
+
 
 def detect_faces_aggressive(image_path, include_attributes=True):
     """Picasa-like aggressive face detection with quality filtering (UNUSED - kept for reference)"""

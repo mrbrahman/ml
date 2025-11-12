@@ -28,7 +28,7 @@ python download_all_models.py
 
 1. Start the service:
 ```bash
-python main.py
+python server.py
 ```
 
 2. The API will be available at `http://localhost:8000`
@@ -262,44 +262,6 @@ Find visually similar images.
 }
 ```
 
-### POST /train
-Train face recognition from a dataset of known faces. Supports two dataset formats:
-
-**Method 1: Directory Structure**
-```json
-{
-  "dataset_path": "/path/to/training_data",
-  "dataset_type": "directory"
-}
-```
-
-Expected directory structure:
-```
-training_data/
-├── john_doe/
-│   ├── photo1.jpg
-│   └── photo2.jpg
-└── jane_smith/
-    ├── photo1.jpg
-    └── photo2.jpg
-```
-
-**Method 2: JSON File**
-```json
-{
-  "dataset_path": "/path/to/training.json",
-  "dataset_type": "json"
-}
-```
-
-The JSON file should contain person names as keys and arrays of image paths as values:
-```json
-{
-  "John Doe": ["/path/to/john1.jpg", "/path/to/john2.jpg"],
-  "Jane Smith": ["/path/to/jane1.jpg"]
-}
-```
-
 ### GET /faceinfo
 Get information about face clusters and recognition statistics.
 
@@ -352,25 +314,36 @@ Health check endpoint with detailed system information.
 
 ```
 project/
-├── src/                    # Application source code
-│   ├── api/               # FastAPI routes and handlers
-│   ├── services/          # Business logic layer
-│   ├── data/              # Data access and vector operations
-│   ├── core/              # ML model operations
-│   ├── infrastructure/    # Configuration and model management
-│   └── schemas/           # API request/response models
+├── server.py              # FastAPI app + routes + uvicorn.run()
+├── download_all_models.py # Model download utility
+├── app/                   # Main application package
+│   ├── config.py          # Configuration
+│   ├── schemas.py         # Pydantic models
+│   ├── services.py        # Business logic
+│   ├── core/              # Core ML functionality
+│   │   ├── model_loader.py        # Shared model loading and caching
+│   │   ├── face_recognition/      # Face recognition module
+│   │   │   ├── detection.py       # Face detection
+│   │   │   ├── recognition.py     # Face recognition & clustering
+│   │   │   ├── storage.py         # FAISS storage operations
+│   │   │   ├── xmp_parser.py      # XMP metadata parsing
+│   │   │   ├── xmp_matcher.py     # XMP metadata matching
+│   │   │   └── annotator.py       # Image annotation
+│   │   └── image_analysis/        # Image description & search module
+│   │       ├── captioning.py      # Image description generation
+│   │       ├── encoding.py        # Image embedding generation
+│   │       └── search.py          # Vector storage & similarity search
+│   └── utils/             # Utility functions
 ├── data/                  # Runtime data storage
 │   ├── faiss_indices/     # FAISS vector indices
 │   ├── annotated_images/  # Annotated images with face boxes
 │   └── training_data/     # Training datasets
-├── main.py                # Application entry point
-├── download_all_models.py # Model download utility
 └── requirements.txt       # Python dependencies
 ```
 
 ## Configuration
 
-Edit `src/infrastructure/config.py` to modify:
+Edit `app/config.py` to modify:
 - Model settings
 - Similarity thresholds
 - FAISS storage paths
@@ -382,21 +355,30 @@ The service automatically detects and uses GPU if available. Models will be load
 
 ## Training Dataset
 
-Train the system with known faces before use. Two methods are supported:
+Training is now integrated into the main analysis endpoints rather than using a separate `/train` endpoint. While previous versions supported traditional training with cropped face thumbnails in directory structures like:
 
-**Method 1: Directory Structure**
-```bash
-curl -X POST "http://localhost:8000/train" \
-  -H "Content-Type: application/json" \
-  -d '{"dataset_path": "/path/to/training_data", "dataset_type": "directory"}'
+```
+training_data/
+├── john_doe/
+│   ├── photo1.jpg
+│   └── photo2.jpg
+└── jane_smith/
+    ├── photo1.jpg
+    └── photo2.jpg
 ```
 
-**Method 2: JSON File**
-```bash
-curl -X POST "http://localhost:8000/train" \
-  -H "Content-Type: application/json" \
-  -d '{"dataset_path": "/path/to/training.json", "dataset_type": "json"}'
-```
+This approach had limitations as InsightFace often failed to detect faces in small thumbnail images, while successfully detecting the same faces in full-resolution photos.
+
+**Current Training Approach:**
+Training now occurs automatically through the `/analyze` and `/faces/recognize` endpoints when `xmp_faces` or `xmp_regions` metadata is provided. This allows the system to learn from full-resolution images with labeled face regions.
+
+**Processing Order:**
+1. First, process images with labeled faces (using `xmp_faces` or `xmp_regions`)
+2. Then, process unlabeled images for automatic face clustering and recognition
+
+This approach leverages the superior face detection capabilities on full images while maintaining accurate face labeling through metadata.
+
+
 
 ## Storage
 

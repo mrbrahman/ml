@@ -58,14 +58,7 @@ class SearchResponse(BaseModel):
     query: str
     results: List[SearchResult]
 
-class TrainRequest(BaseModel):
-    dataset_path: str
-    dataset_type: str = "directory"  # "directory" or "json"
 
-class TrainResponse(BaseModel):
-    success: bool
-    message: str
-    faces_trained: int
 
 class FaceRecognitionResponse(BaseModel):
     image_id: str

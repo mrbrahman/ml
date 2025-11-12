@@ -51,18 +51,7 @@ async def name_face_cluster_endpoint(cluster_id: str, request: NameClusterReques
     else:
         return NameClusterResponse(success=False, message=f"Cluster {cluster_id} not found")
 
-@app.post("/train", response_model=TrainResponse)
-async def train_faces_endpoint(request: TrainRequest):
-    try:
-        success = train_from_dataset(request.dataset_path, request.dataset_type)
-        
-        if success:
-            return TrainResponse(success=True, message=f"Training completed from {request.dataset_path}", faces_trained=0)
-        else:
-            return TrainResponse(success=False, message=f"Training failed from {request.dataset_path}", faces_trained=0)
-            
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Training failed: {str(e)}")
+
 
 @app.post("/search/text", response_model=SearchResponse)
 async def search_by_text_endpoint(request: SearchRequest):
