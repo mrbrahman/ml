@@ -5,6 +5,7 @@ from typing import List, Optional
 from app.schemas import *
 from app.core.face_recognition.detection import detect_faces
 from app.core.image_analysis import captioning, encoding, search
+from app.core.image_analysis import storage as image_storage
 from app.core.face_recognition import storage as face_storage
 from app.core.face_recognition import recognition as face_recognition
 from app.core.face_recognition.xmp_parser import parse_xmp_regions
@@ -141,10 +142,10 @@ def caption_image(image_id: str, image_path: str) -> ImageCaptionResponse:
 
 def encode_image(image_id: str, image_path: str) -> ImageEncodeResponse:
     """Generate and store image embedding using CLIP"""
-    search.remove_search_embeddings(image_id)
+    image_storage.remove_search_embeddings(image_id)
     clip_embedding = encoding.encode_image(image_path)
-    search.add_visual_embedding(image_id, clip_embedding)
-    search.add_text_embedding(image_id, clip_embedding)
+    image_storage.add_visual_embedding(image_id, clip_embedding)
+    image_storage.add_text_embedding(image_id, clip_embedding)
     
     return ImageEncodeResponse(
         image_id=image_id,
