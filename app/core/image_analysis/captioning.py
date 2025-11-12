@@ -1,14 +1,13 @@
 import torch
 from PIL import Image
-from src.infrastructure.model_manager import model_manager
-from src.infrastructure.config import DEVICE
+from app.core.model_loader import get_blip_model
+from app.config import DEVICE
 
 def generate_description(image_path):
     """Generate detailed image description with fallback"""
-    blip_processor, blip_model = model_manager.get_blip_model()
+    blip_processor, blip_model = get_blip_model()
     
     if blip_processor is None or blip_model is None:
-        # Fallback: return generic description
         return "Image analysis temporarily unavailable. Face detection still functional."
     
     try:

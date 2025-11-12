@@ -1,10 +1,10 @@
 import cv2
-from typing import List, Tuple, Optional
-from src.schemas.models import XmpFace
+from typing import List, Optional
+from app.schemas import XmpFace
+from .xmp_parser import convert_xmp_to_pixels
 
 def calculate_containment(inner_box: List[float], outer_box: List[float], threshold: float = 0.7) -> float:
-    """Calculate what percentage of inner_box is contained within outer_box
-    Perfect for Picasa XMP (outer) containing InsightFace detection (inner)"""
+    """Calculate what percentage of inner_box is contained within outer_box"""
     x1_inner, y1_inner, x2_inner, y2_inner = inner_box
     x1_outer, y1_outer, x2_outer, y2_outer = outer_box
     
@@ -20,11 +20,10 @@ def calculate_containment(inner_box: List[float], outer_box: List[float], thresh
     intersection = (x_right - x_left) * (y_bottom - y_top)
     inner_area = (x2_inner - x1_inner) * (y2_inner - y1_inner)
     
-    # Return percentage of inner box that's contained in outer box
     return intersection / inner_area if inner_area > 0 else 0.0
 
 def calculate_iou(box1: List[float], box2: List[float]) -> float:
-    """Calculate Intersection over Union (IoU) between two bounding boxes in (x1, y1, x2, y2) format"""
+    """Calculate Intersection over Union (IoU) between two bounding boxes"""
     x1_1, y1_1, x2_1, y2_1 = box1
     x1_2, y1_2, x2_2, y2_2 = box2
     
@@ -43,23 +42,6 @@ def calculate_iou(box1: List[float], box2: List[float]) -> float:
     union = area1 + area2 - intersection
     
     return intersection / union if union > 0 else 0.0
-
-def convert_xmp_to_pixels(xmp_face: XmpFace, image_width: int, image_height: int) -> List[float]:
-    """Convert normalized XMP coordinates to pixel coordinates in (x1, y1, x2, y2) format
-    Note: XMP stores X,Y as center of the area, not top-left corner"""
-    # XMP coordinates are center-based
-    center_x = xmp_face.x * image_width
-    center_y = xmp_face.y * image_height
-    w = xmp_face.w * image_width
-    h = xmp_face.h * image_height
-    
-    # Convert center-based to top-left corner based
-    x1 = center_x - w / 2
-    y1 = center_y - h / 2
-    x2 = x1 + w
-    y2 = y1 + h
-    
-    return [x1, y1, x2, y2]
 
 def match_xmp_faces(detected_faces: List[dict], xmp_faces: Optional[List[XmpFace]], image_path: str, containment_threshold: float = 0.7, iou_threshold: float = 0.08) -> List[dict]:
     """Match detected faces with XMP face regions and assign names"""
@@ -82,10 +64,7 @@ def match_xmp_faces(detected_faces: List[dict], xmp_faces: Optional[List[XmpFace
             'bbox': pixel_coords
         })
     
-    print(f"DEBUG: Image size: {image_width}x{image_height}")
-    print(f"DEBUG: Found {len(detected_faces)} detected faces, {len(xmp_pixel_faces)} XMP faces")
-    
-    # Match detected faces with XMP faces using containment first, then IoU fallback
+    # Match detected faces with XMP faces
     matched_faces = []
     for face in detected_faces:
         best_match = None
@@ -93,7 +72,7 @@ def match_xmp_faces(detected_faces: List[dict], xmp_faces: Optional[List[XmpFace
         match_type = "none"
         
         for xmp_face in xmp_pixel_faces:
-            # Try containment first (InsightFace inside Picasa XMP region)
+            # Try containment first
             containment = calculate_containment(face['bbox'], xmp_face['bbox'])
             if containment >= containment_threshold:
                 if containment > best_score:
@@ -114,11 +93,9 @@ def match_xmp_faces(detected_faces: List[dict], xmp_faces: Optional[List[XmpFace
             face['person_name'] = best_match['name']
             face['xmp_matched'] = True
             face['xmp_match_confidence'] = best_score
-            print(f"DEBUG: Matched face {face['bbox']} with XMP {best_match['name']} ({match_type}: {best_score:.3f})")
         else:
             face['xmp_matched'] = False
             face['xmp_match_confidence'] = 0.0
-            print(f"DEBUG: No XMP match for face {face['bbox']} (best score: {best_score:.3f})")
         
         matched_faces.append(face)
     

@@ -1,9 +1,67 @@
 import cv2
-from src.infrastructure.model_manager import model_manager
+import numpy as np
+from app.core.model_loader import get_face_model
 
-def _detect_faces_aggressive(image_path, include_attributes=True):
-    """Picasa-like aggressive face detection with quality filtering"""
-    face_app = model_manager.get_face_model()
+def detect_faces(image_path):
+    """Detect faces with full attributes for regular use"""
+    face_app = get_face_model()
+    img = cv2.imread(image_path)
+    faces = face_app.get(img)
+    
+    results = []
+    for face in faces:
+        face_data = {
+            'bbox': face.bbox.tolist(),
+            'confidence': float(face.det_score),
+            'embedding': face.normed_embedding
+        }
+        
+        if hasattr(face, 'gender') and face.gender is not None:
+            face_data['gender'] = 'M' if int(face.gender) == 1 else 'F'
+        if hasattr(face, 'age') and face.age is not None:
+            face_data['age'] = int(face.age)
+        if hasattr(face, 'kps') and face.kps is not None:
+            kps = face.kps.tolist()
+            if len(kps) >= 5:
+                face_data['landmarks'] = {
+                    'left_eye': kps[0],
+                    'right_eye': kps[1], 
+                    'nose': kps[2],
+                    'left_mouth': kps[3],
+                    'right_mouth': kps[4]
+                }
+        if hasattr(face, 'pose') and face.pose is not None:
+            pose = face.pose.tolist()
+            if len(pose) >= 3:
+                face_data['pose'] = {
+                    'pitch': pose[0],
+                    'yaw': pose[1],
+                    'roll': pose[2]
+                }
+        
+        results.append(face_data)
+    
+    return results
+
+def detect_faces_for_training(image_path):
+    """Detect faces for training (embeddings only)"""
+    face_app = get_face_model()
+    img = cv2.imread(image_path)
+    faces = face_app.get(img)
+    
+    results = []
+    for face in faces:
+        results.append({
+            'bbox': face.bbox.tolist(),
+            'confidence': float(face.det_score),
+            'embedding': face.normed_embedding
+        })
+    
+    return results
+
+def detect_faces_aggressive(image_path, include_attributes=True):
+    """Picasa-like aggressive face detection with quality filtering (UNUSED - kept for reference)"""
+    face_app = get_face_model()
     img = cv2.imread(image_path)
     
     # Store original settings
@@ -78,56 +136,3 @@ def _detect_faces_aggressive(image_path, include_attributes=True):
         results.append(face_data)
     
     return results
-
-def _detect_faces_default(image_path, include_attributes=True):
-    """Standard InsightFace detection with default settings"""
-    face_app = model_manager.get_face_model()
-    img = cv2.imread(image_path)
-    
-    # Use InsightFace defaults - no threshold modifications
-    faces = face_app.get(img)
-    
-    results = []
-    for face in faces:
-        face_data = {
-            'bbox': face.bbox.tolist(),
-            'confidence': float(face.det_score),
-            'embedding': face.normed_embedding
-        }
-        
-        # Add attributes only if requested
-        if include_attributes:
-            if hasattr(face, 'gender') and face.gender is not None:
-                face_data['gender'] = 'M' if int(face.gender) == 1 else 'F'
-            if hasattr(face, 'age') and face.age is not None:
-                face_data['age'] = int(face.age)
-            if hasattr(face, 'kps') and face.kps is not None:
-                kps = face.kps.tolist()
-                if len(kps) >= 5:
-                    face_data['landmarks'] = {
-                        'left_eye': kps[0],
-                        'right_eye': kps[1], 
-                        'nose': kps[2],
-                        'left_mouth': kps[3],
-                        'right_mouth': kps[4]
-                    }
-            if hasattr(face, 'pose') and face.pose is not None:
-                pose = face.pose.tolist()
-                if len(pose) >= 3:
-                    face_data['pose'] = {
-                        'pitch': pose[0],
-                        'yaw': pose[1],
-                        'roll': pose[2]
-                    }
-        
-        results.append(face_data)
-    
-    return results
-
-def detect_faces(image_path):
-    """Detect faces with full attributes for regular use"""
-    return _detect_faces_default(image_path, include_attributes=True)
-
-def detect_faces_for_training(image_path):
-    """Detect faces for training (embeddings only)"""
-    return _detect_faces_default(image_path, include_attributes=False)

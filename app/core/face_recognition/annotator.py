@@ -2,8 +2,8 @@ import cv2
 import os
 from pathlib import Path
 from typing import List, Optional
-from src.schemas.models import FaceInfo, XmpFace
-from src.core.xmp_matcher import convert_xmp_to_pixels
+from app.schemas import FaceInfo, XmpFace
+from .xmp_parser import convert_xmp_to_pixels
 
 def create_enriched_image(image_path: str, faces: List[FaceInfo], output_dir: str = "data/annotated_images", xmp_faces: Optional[List[XmpFace]] = None) -> str:
     """Create an enriched image with bounding boxes and face labels"""

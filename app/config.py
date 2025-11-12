@@ -7,11 +7,6 @@ USE_GPU = torch.cuda.is_available()
 
 # Model Configuration
 FACE_DETECTION_MODEL = "buffalo_l"  # InsightFace model
-# Face matching uses multi-candidate evaluation with cluster consensus:
-# 1. Search top-k similar faces above threshold (0.75 for accuracy)
-# 2. Group matches by cluster, count matches per cluster
-# 3. Choose cluster with most matches (consensus approach)
-# 4. Return best individual match as reference
 FACE_SIMILARITY_THRESHOLD = 0.75
 FACE_MATCH_TOP_K = 5  # Check top 5 matches for cluster consensus
 IMAGE_DESCRIPTION_MODEL = "Salesforce/blip2-opt-2.7b"

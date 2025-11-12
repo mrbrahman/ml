@@ -1,0 +1,1 @@
+# Image analysis module for photo descriptions and similarity search

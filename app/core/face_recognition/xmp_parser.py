@@ -1,6 +1,6 @@
 import json
-from typing import List, Dict, Any, Union
-from src.schemas.models import XmpFace
+from typing import List, Union
+from app.schemas import XmpFace
 
 def parse_xmp_regions(xmp_regions: Union[str, dict, None]) -> List[XmpFace]:
     """Parse XMP regions (string or dict) and convert to XmpFace objects"""
@@ -41,16 +41,18 @@ def parse_xmp_regions(xmp_regions: Union[str, dict, None]) -> List[XmpFace]:
         print(f"Error parsing XMP regions: {e}")
         return []
 
-def convert_xmp_to_api_format(xmp_regions_json: str) -> List[Dict[str, Any]]:
-    """Convert XMP regions to API format for easy testing"""
-    xmp_faces = parse_xmp_regions(xmp_regions_json)
-    return [
-        {
-            "name": face.name,
-            "x": face.x,
-            "y": face.y,
-            "w": face.w,
-            "h": face.h
-        }
-        for face in xmp_faces
-    ]
+def convert_xmp_to_pixels(xmp_face: XmpFace, image_width: int, image_height: int) -> List[float]:
+    """Convert normalized XMP coordinates to pixel coordinates"""
+    # XMP coordinates are center-based
+    center_x = xmp_face.x * image_width
+    center_y = xmp_face.y * image_height
+    w = xmp_face.w * image_width
+    h = xmp_face.h * image_height
+    
+    # Convert center-based to top-left corner based
+    x1 = center_x - w / 2
+    y1 = center_y - h / 2
+    x2 = x1 + w
+    y2 = y1 + h
+    
+    return [x1, y1, x2, y2]

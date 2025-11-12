@@ -1,22 +1,19 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+import uvicorn
 import os
 import torch
-from typing import List, Optional
-from src.schemas.models import (
-    AnalyzeImageRequest, AnalyzeImageResponse, NameClusterRequest, 
-    NameClusterResponse, SearchRequest, SearchResponse, TrainRequest, 
-    TrainResponse, FaceRecognitionResponse, InfoResponse, UpdatePersonNameRequest,
-    CorrectFaceAssignmentRequest, CorrectFaceAssignmentResponse, XmpFace
-)
-from src.services.image_service import analyze_image, get_similar_images
-from src.services.face_service import recognize_faces, assign_name_to_cluster, train_from_dataset, get_cluster_info, update_cluster_name_by_old_name, correct_face_assignment
-from src.services.search_service import search_by_text, find_similar_images
-from src.infrastructure.model_manager import model_manager
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.schemas import *
+from app.services import *
+from app.core.image_analysis import search
+from app.core import model_loader
+from app.core.face_recognition import storage as face_storage
+from app.core.face_recognition import recognition as face_recognition
+from app.config import HOST, PORT
 
 app = FastAPI(title="AI Photo Analysis Service", version="1.0.0")
 
-# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -27,9 +24,6 @@ app.add_middleware(
 
 @app.post("/analyze", response_model=AnalyzeImageResponse)
 async def analyze_image_endpoint(request: AnalyzeImageRequest):
-    """Analyze image for faces and generate description"""
-    
-    # Validate image path exists
     if not os.path.exists(request.image_path):
         raise HTTPException(status_code=404, detail="Image file not found")
     
@@ -40,12 +34,8 @@ async def analyze_image_endpoint(request: AnalyzeImageRequest):
 
 @app.post("/faces/recognize", response_model=FaceRecognitionResponse)
 async def recognize_faces_endpoint(request: AnalyzeImageRequest):
-    """Face recognition only - detect and identify faces without image description"""
-    
     if not os.path.exists(request.image_path):
         raise HTTPException(status_code=404, detail="Image file not found")
-    
-
     
     try:
         return recognize_faces(request.image_id, request.image_path, request.save_annotated, request.xmp_faces, request.xmp_regions)
@@ -54,108 +44,84 @@ async def recognize_faces_endpoint(request: AnalyzeImageRequest):
 
 @app.put("/faces/{cluster_id}", response_model=NameClusterResponse)
 async def name_face_cluster_endpoint(cluster_id: str, request: NameClusterRequest):
-    """Assign name to a face cluster"""
-    
-    success = assign_name_to_cluster(cluster_id, request.name)
+    success = face_storage.name_face_cluster(cluster_id, request.name)
     
     if success:
-        return NameClusterResponse(
-            success=True,
-            message=f"Cluster {cluster_id} named as '{request.name}'"
-        )
+        return NameClusterResponse(success=True, message=f"Cluster {cluster_id} named as '{request.name}'")
     else:
-        return NameClusterResponse(
-            success=False,
-            message=f"Cluster {cluster_id} not found"
-        )
+        return NameClusterResponse(success=False, message=f"Cluster {cluster_id} not found")
 
 @app.post("/train", response_model=TrainResponse)
 async def train_faces_endpoint(request: TrainRequest):
-    """Train face recognition from dataset"""
     try:
         success = train_from_dataset(request.dataset_path, request.dataset_type)
         
         if success:
-            return TrainResponse(
-                success=True,
-                message=f"Training completed from {request.dataset_path}",
-                faces_trained=0  # Could track this if needed
-            )
+            return TrainResponse(success=True, message=f"Training completed from {request.dataset_path}", faces_trained=0)
         else:
-            return TrainResponse(
-                success=False,
-                message=f"Training failed from {request.dataset_path}",
-                faces_trained=0
-            )
+            return TrainResponse(success=False, message=f"Training failed from {request.dataset_path}", faces_trained=0)
             
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Training failed: {str(e)}")
 
 @app.post("/search/text", response_model=SearchResponse)
 async def search_by_text_endpoint(request: SearchRequest):
-    """Search for images using text query"""
     try:
         search_results = search_by_text(request.query, request.limit)
-        
-        return SearchResponse(
-            query=request.query,
-            results=search_results
-        )
-        
+        return SearchResponse(query=request.query, results=search_results)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
 
 @app.post("/search/similar", response_model=SearchResponse)
 async def search_similar_images_endpoint(request: AnalyzeImageRequest):
-    """Find visually similar images"""
     if not os.path.exists(request.image_path):
         raise HTTPException(status_code=404, detail="Image file not found")
     
     try:
         search_results = find_similar_images(request.image_path, limit=10)
-        
-        return SearchResponse(
-            query=f"Similar to {request.image_path}",
-            results=search_results
-        )
-        
+        return SearchResponse(query=f"Similar to {request.image_path}", results=search_results)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
 
 @app.post("/faces/update-name", response_model=NameClusterResponse)
 async def update_face_cluster_name_endpoint(request: UpdatePersonNameRequest):
-    """Update name of an existing face cluster"""
+    updated_clusters = 0
+    updated_faces = 0
+    face_clusters, face_cluster_names = face_storage.get_face_clusters()
+    for cluster_id, name in list(face_cluster_names.items()):
+        if name == request.old_name:
+            face_storage.name_face_cluster(cluster_id, request.new_name)
+            updated_clusters += 1
+            updated_faces += len(face_clusters.get(cluster_id, []))
     
-    success, cluster_count, face_count = update_cluster_name_by_old_name(request.old_name, request.new_name)
-    
-    if success:
+    if updated_clusters > 0:
         return NameClusterResponse(
             success=True,
-            message=f"Updated '{request.old_name}' to '{request.new_name}' ({cluster_count} clusters, {face_count} faces)"
+            message=f"Updated '{request.old_name}' to '{request.new_name}' ({updated_clusters} clusters, {updated_faces} faces)"
         )
     else:
-        return NameClusterResponse(
-            success=False,
-            message=f"Person '{request.old_name}' not found"
-        )
+        return NameClusterResponse(success=False, message=f"Person '{request.old_name}' not found")
 
 @app.post("/faces/correct", response_model=CorrectFaceAssignmentResponse)
 async def correct_face_assignment_endpoint(request: CorrectFaceAssignmentRequest):
-    """Correct face assignment by providing the correct person name"""
-    
     try:
-        return correct_face_assignment(request.image_id, request.person_name)
+        success, cluster_id, action, message = face_recognition.correct_face_assignment(request.image_id, request.person_name)
+        
+        return CorrectFaceAssignmentResponse(
+            success=success,
+            message=message,
+            cluster_id=cluster_id,
+            action_taken=action
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Face correction failed: {str(e)}")
 
 @app.get("/faceinfo", response_model=InfoResponse)
 async def get_face_info():
-    """Get face cluster information"""
     return get_cluster_info()
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint with detailed GPU information"""
     try:
         cuda_available = torch.cuda.is_available()
         device_info = "cuda" if cuda_available else "cpu"
@@ -180,10 +146,13 @@ async def health_check():
             "gpu_info": gpu_info,
             "pytorch_version": torch.__version__,
             "models_loaded": {
-                "face": model_manager.face_app is not None,
-                "blip": model_manager.blip_model is not None,
-                "clip": model_manager.clip_model is not None
+                "face": model_loader.is_face_model_loaded(),
+                "blip": model_loader.is_blip_model_loaded(),
+                "clip": model_loader.is_clip_model_loaded()
             }
         }
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+if __name__ == "__main__":
+    uvicorn.run(app, host=HOST, port=PORT)

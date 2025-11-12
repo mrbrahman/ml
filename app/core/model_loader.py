@@ -1,0 +1,119 @@
+import torch
+import insightface
+from transformers import BlipProcessor, BlipForConditionalGeneration, CLIPProcessor, CLIPModel
+import ssl
+import urllib3
+import os
+import requests
+from app.config import DEVICE, FACE_DETECTION_MODEL, IMAGE_DESCRIPTION_MODEL, CLIP_MODEL
+
+# Disable SSL warnings and verification for corporate environments
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+os.environ['CURL_CA_BUNDLE'] = ''
+os.environ['REQUESTS_CA_BUNDLE'] = ''
+os.environ['HF_HUB_DISABLE_TELEMETRY'] = '1'
+ssl._create_default_https_context = ssl._create_unverified_context
+
+# Patch requests globally to disable SSL verification
+original_request = requests.Session.request
+def patched_request(self, method, url, **kwargs):
+    kwargs['verify'] = False
+    return original_request(self, method, url, **kwargs)
+requests.Session.request = patched_request
+
+# Global model state
+_face_app = None
+_blip_processor = None
+_blip_model = None
+_clip_processor = None
+_clip_model = None
+
+def get_face_model():
+    """Lazy load InsightFace model"""
+    global _face_app
+    if _face_app is None:
+        print("Loading InsightFace model...")
+        try:
+            import requests
+            session = requests.Session()
+            session.verify = False
+            
+            original_get = requests.get
+            def patched_get(*args, **kwargs):
+                kwargs['verify'] = False
+                return original_get(*args, **kwargs)
+            requests.get = patched_get
+            
+            _face_app = insightface.app.FaceAnalysis(name=FACE_DETECTION_MODEL)
+            _face_app.prepare(ctx_id=0 if DEVICE == "cuda" else -1, det_size=(640, 640))
+            
+            requests.get = original_get
+            print("InsightFace model loaded successfully")
+        except Exception as e:
+            print(f"Failed to load InsightFace: {e}")
+            raise
+    return _face_app
+
+def get_blip_model():
+    """Lazy load BLIP model with fallback"""
+    global _blip_processor, _blip_model
+    if _blip_processor is None or _blip_model is None:
+        print("Loading BLIP model...")
+        try:
+            _blip_processor = BlipProcessor.from_pretrained(
+                IMAGE_DESCRIPTION_MODEL,
+                trust_remote_code=True,
+                token=False
+            )
+            _blip_model = BlipForConditionalGeneration.from_pretrained(
+                IMAGE_DESCRIPTION_MODEL,
+                trust_remote_code=True,
+                token=False
+            )
+            if DEVICE == "cuda":
+                _blip_model = _blip_model.to(DEVICE)
+            print("BLIP model loaded successfully")
+        except Exception as e:
+            print(f"Failed to load BLIP model: {e}")
+            print("Using fallback: returning generic descriptions")
+            _blip_processor = None
+            _blip_model = None
+    return _blip_processor, _blip_model
+
+def get_clip_model():
+    """Lazy load CLIP model with fallback"""
+    global _clip_processor, _clip_model
+    if _clip_processor is None or _clip_model is None:
+        print("Loading CLIP model...")
+        try:
+            _clip_processor = CLIPProcessor.from_pretrained(
+                CLIP_MODEL,
+                trust_remote_code=True,
+                token=False
+            )
+            _clip_model = CLIPModel.from_pretrained(
+                CLIP_MODEL,
+                trust_remote_code=True,
+                token=False
+            )
+            if DEVICE == "cuda":
+                _clip_model = _clip_model.to(DEVICE)
+            print("CLIP model loaded successfully")
+        except Exception as e:
+            print(f"Failed to load CLIP model: {e}")
+            print("Using fallback: generating random embeddings")
+            _clip_processor = None
+            _clip_model = None
+    return _clip_processor, _clip_model
+
+def is_face_model_loaded():
+    """Check if face model is loaded"""
+    return _face_app is not None
+
+def is_blip_model_loaded():
+    """Check if BLIP model is loaded"""
+    return _blip_model is not None
+
+def is_clip_model_loaded():
+    """Check if CLIP model is loaded"""
+    return _clip_model is not None

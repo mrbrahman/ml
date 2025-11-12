@@ -1,15 +1,14 @@
 import torch
 import numpy as np
 from PIL import Image
-from src.infrastructure.model_manager import model_manager
-from src.infrastructure.config import DEVICE
+from app.core.model_loader import get_clip_model
+from app.config import DEVICE
 
 def encode_image(image_path):
     """Get CLIP embedding for text-searchable similarity with fallback"""
-    clip_processor, clip_model = model_manager.get_clip_model()
+    clip_processor, clip_model = get_clip_model()
     
     if clip_processor is None or clip_model is None:
-        # Fallback: return random normalized embedding
         print("Using fallback random embedding for CLIP")
         embedding = np.random.randn(512).astype('float32')
         embedding = embedding / np.linalg.norm(embedding)
@@ -24,23 +23,20 @@ def encode_image(image_path):
         
         with torch.no_grad():
             image_features = clip_model.get_image_features(**inputs)
-            # Normalize for cosine similarity
             image_features = image_features / image_features.norm(dim=-1, keepdim=True)
         
         return image_features.cpu().numpy().flatten()
     except Exception as e:
         print(f"Error generating CLIP embedding: {e}")
-        # Fallback: return random normalized embedding
         embedding = np.random.randn(512).astype('float32')
         embedding = embedding / np.linalg.norm(embedding)
         return embedding
 
 def encode_text(text):
     """Get CLIP text embedding for search queries"""
-    clip_processor, clip_model = model_manager.get_clip_model()
+    clip_processor, clip_model = get_clip_model()
     
     if clip_processor is None or clip_model is None:
-        # Fallback: return random normalized embedding
         print("Using fallback random embedding for text")
         embedding = np.random.randn(512).astype('float32')
         embedding = embedding / np.linalg.norm(embedding)
@@ -54,13 +50,11 @@ def encode_text(text):
         
         with torch.no_grad():
             text_features = clip_model.get_text_features(**inputs)
-            # Normalize for cosine similarity
             text_features = text_features / text_features.norm(dim=-1, keepdim=True)
         
         return text_features.cpu().numpy().flatten()
     except Exception as e:
         print(f"Error generating text embedding: {e}")
-        # Fallback: return random normalized embedding
         embedding = np.random.randn(512).astype('float32')
         embedding = embedding / np.linalg.norm(embedding)
         return embedding

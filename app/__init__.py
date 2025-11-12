@@ -1,0 +1,1 @@
+# AI Photo Analysis Service - Main Application Package
