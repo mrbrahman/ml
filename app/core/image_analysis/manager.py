@@ -41,12 +41,12 @@ def encode_image(image_id: str, image_path: str) -> ImageEncodeResponse:
         models_used={"image_encoding": model_name}
     )
 
-def analyze_composite(image_id: str, image_path: str, xmp_faces=None, xmp_regions=None, save_annotated: bool = False) -> CompositeAnalyzeResponse:
+def analyze_composite(image_id: str, image_path: str, known_faces=None, xmp_regions=None, save_annotated: bool = False) -> CompositeAnalyzeResponse:
     """Analyze image for faces and generate description by calling individual services"""
     from app.core.face_recognition import manager as face_manager
     
     # Call face recognition service
-    face_response = face_manager.recognize(image_id, image_path, save_annotated, xmp_faces, xmp_regions)
+    face_response = face_manager.recognize(image_id, image_path, save_annotated, known_faces, xmp_regions)
     
     # Call image captioning service
     caption_response = generate_caption(image_id, image_path)

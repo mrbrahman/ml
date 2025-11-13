@@ -18,7 +18,7 @@ def parse_xmp_regions(xmp_regions: Union[str, dict, None]) -> List[XmpFace]:
             regions_data = xmp_regions
         
         # Extract face regions
-        xmp_faces = []
+        known_faces = []
         if 'RegionList' in regions_data:
             for region in regions_data['RegionList']:
                 # Only process Face type regions
@@ -27,28 +27,28 @@ def parse_xmp_regions(xmp_regions: Union[str, dict, None]) -> List[XmpFace]:
                     
                     # Ensure we have normalized coordinates
                     if area.get('Unit') == 'normalized':
-                        xmp_face = XmpFace(
+                        known_face = XmpFace(
                             name=region['Name'],
                             x=float(area['X']),
                             y=float(area['Y']),
                             w=float(area['W']),
                             h=float(area['H'])
                         )
-                        xmp_faces.append(xmp_face)
+                        known_faces.append(known_face)
         
-        return xmp_faces
+        return known_faces
         
     except (json.JSONDecodeError, KeyError, ValueError, TypeError) as e:
         print(f"Error parsing XMP regions: {e}")
         return []
 
-def convert_xmp_to_pixels(xmp_face: XmpFace, image_width: int, image_height: int) -> List[float]:
+def convert_xmp_to_pixels(known_face: XmpFace, image_width: int, image_height: int) -> List[float]:
     """Convert normalized XMP coordinates to pixel coordinates"""
     # XMP coordinates are center-based
-    center_x = xmp_face.x * image_width
-    center_y = xmp_face.y * image_height
-    w = xmp_face.w * image_width
-    h = xmp_face.h * image_height
+    center_x = known_face.x * image_width
+    center_y = known_face.y * image_height
+    w = known_face.w * image_width
+    h = known_face.h * image_height
     
     # Convert center-based to top-left corner based
     x1 = center_x - w / 2
@@ -98,9 +98,9 @@ def calculate_iou(box1: List[float], box2: List[float]) -> float:
     
     return intersection / union if union > 0 else 0.0
 
-def match_xmp_faces(detected_faces: List[dict], xmp_faces: Optional[List[XmpFace]], image_path: str, containment_threshold: float = 0.7, iou_threshold: float = 0.08) -> List[dict]:
+def match_known_faces(detected_faces: List[dict], known_faces: Optional[List[XmpFace]], image_path: str, containment_threshold: float = 0.7, iou_threshold: float = 0.08) -> List[dict]:
     """Match detected faces with XMP face regions and assign names"""
-    if not xmp_faces or xmp_faces is None:
+    if not known_faces or known_faces is None:
         return detected_faces
     
     # Get image dimensions
@@ -112,10 +112,10 @@ def match_xmp_faces(detected_faces: List[dict], xmp_faces: Optional[List[XmpFace
     
     # Convert XMP faces to pixel coordinates
     xmp_pixel_faces = []
-    for xmp_face in xmp_faces:
-        pixel_coords = convert_xmp_to_pixels(xmp_face, image_width, image_height)
+    for known_face in known_faces:
+        pixel_coords = convert_xmp_to_pixels(known_face, image_width, image_height)
         xmp_pixel_faces.append({
-            'name': xmp_face.name,
+            'name': known_face.name,
             'bbox': pixel_coords
         })
     
@@ -126,21 +126,21 @@ def match_xmp_faces(detected_faces: List[dict], xmp_faces: Optional[List[XmpFace
         best_score = 0.0
         match_type = "none"
         
-        for xmp_face in xmp_pixel_faces:
+        for known_face in xmp_pixel_faces:
             # Try containment first
-            containment = calculate_containment(face['bbox'], xmp_face['bbox'])
+            containment = calculate_containment(face['bbox'], known_face['bbox'])
             if containment >= containment_threshold:
                 if containment > best_score:
                     best_score = containment
-                    best_match = xmp_face
+                    best_match = known_face
                     match_type = "containment"
             
             # Fallback to IoU if no good containment match
             elif match_type != "containment":
-                iou = calculate_iou(face['bbox'], xmp_face['bbox'])
+                iou = calculate_iou(face['bbox'], known_face['bbox'])
                 if iou >= iou_threshold and iou > best_score:
                     best_score = iou
-                    best_match = xmp_face
+                    best_match = known_face
                     match_type = "iou"
         
         # Add XMP match information

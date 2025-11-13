@@ -12,7 +12,7 @@ class AnalyzeImageRequest(BaseModel):
     image_id: str
     image_path: str
     save_annotated: Optional[bool] = False
-    xmp_faces: Optional[List[XmpFace]] = None
+    known_faces: Optional[List[XmpFace]] = None
     xmp_regions: Optional[dict] = None  # Raw XMP regions object from exiftool
 
 class FaceInfo(BaseModel):

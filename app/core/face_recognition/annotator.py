@@ -5,7 +5,7 @@ from typing import List, Optional
 from app.schemas import FaceInfo, XmpFace
 from .xmp_processor import convert_xmp_to_pixels
 
-def create_enriched_image(image_path: str, faces: List[FaceInfo], output_dir: str = "data/annotated_images", xmp_faces: Optional[List[XmpFace]] = None) -> str:
+def create_enriched_image(image_path: str, faces: List[FaceInfo], output_dir: str = "data/annotated_images", known_faces: Optional[List[XmpFace]] = None) -> str:
     """Create an enriched image with bounding boxes and face labels"""
     
     # Create output directory if it doesn't exist
@@ -24,10 +24,10 @@ def create_enriched_image(image_path: str, faces: List[FaceInfo], output_dir: st
     image_height, image_width = img.shape[:2]
     
     # Draw XMP faces first (in blue, semi-transparent)
-    if xmp_faces and xmp_faces is not None:
-        for xmp_face in xmp_faces:
+    if known_faces and known_faces is not None:
+        for known_face in known_faces:
             # Convert XMP coordinates to pixels
-            x1, y1, x2, y2 = [int(coord) for coord in convert_xmp_to_pixels(xmp_face, image_width, image_height)]
+            x1, y1, x2, y2 = [int(coord) for coord in convert_xmp_to_pixels(known_face, image_width, image_height)]
             
             # Create overlay for transparency
             overlay = img.copy()
@@ -36,7 +36,7 @@ def create_enriched_image(image_path: str, faces: List[FaceInfo], output_dir: st
             cv2.rectangle(overlay, (x1, y1), (x2, y2), (255, 0, 0), 2)
             
             # Prepare XMP label
-            xmp_label = f"XMP: {xmp_face.name}"
+            xmp_label = f"XMP: {known_face.name}"
             
             # Calculate text size
             font = cv2.FONT_HERSHEY_SIMPLEX

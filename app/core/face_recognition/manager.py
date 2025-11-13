@@ -1,22 +1,22 @@
 from typing import List, Optional
 from app.schemas import *
 from .detection import detect_faces
-from .xmp_processor import parse_xmp_regions, match_xmp_faces
+from .xmp_processor import parse_xmp_regions, match_known_faces
 from .clustering import add_face_embedding, correct_face_assignment
 from .annotator import create_enriched_image
 from . import storage
 from app.config import MODEL_NAMES
 
-def recognize(image_id: str, image_path: str, save_annotated: bool = False, xmp_faces: Optional[List[XmpFace]] = None, xmp_regions: Optional[dict] = None) -> FaceRecognitionResponse:
+def recognize(image_id: str, image_path: str, save_annotated: bool = False, known_faces: Optional[List[XmpFace]] = None, xmp_regions: Optional[dict] = None) -> FaceRecognitionResponse:
     """Face recognition only"""
     storage.remove_face_embeddings(image_id)
     faces_data = detect_faces(image_path)
     
-    if xmp_regions and not xmp_faces:
-        xmp_faces = parse_xmp_regions(xmp_regions)
+    if xmp_regions and not known_faces:
+        known_faces = parse_xmp_regions(xmp_regions)
     
-    if xmp_faces:
-        faces_data = match_xmp_faces(faces_data, xmp_faces, image_path)
+    if known_faces:
+        faces_data = match_known_faces(faces_data, known_faces, image_path)
     
     faces_info = []
     for face_data in faces_data:
@@ -48,7 +48,7 @@ def recognize(image_id: str, image_path: str, save_annotated: bool = False, xmp_
         ))
     
     if save_annotated and faces_info:
-        create_enriched_image(image_path, faces_info, xmp_faces=xmp_faces)
+        create_enriched_image(image_path, faces_info, known_faces=known_faces)
     
     return FaceRecognitionResponse(
         image_id=image_id,

@@ -28,7 +28,7 @@ async def analyze_image_endpoint(request: AnalyzeImageRequest):
         raise HTTPException(status_code=404, detail="Image file not found")
     
     try:
-        return analyze_image(request.image_id, request.image_path, request.xmp_faces, request.xmp_regions, request.save_annotated)
+        return analyze_image(request.image_id, request.image_path, request.known_faces, request.xmp_regions, request.save_annotated)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 
@@ -38,7 +38,7 @@ async def recognize_faces_endpoint(request: AnalyzeImageRequest):
         raise HTTPException(status_code=404, detail="Image file not found")
     
     try:
-        return recognize_faces(request.image_id, request.image_path, request.save_annotated, request.xmp_faces, request.xmp_regions)
+        return recognize_faces(request.image_id, request.image_path, request.save_annotated, request.known_faces, request.xmp_regions)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Face recognition failed: {str(e)}")
 

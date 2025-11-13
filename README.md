@@ -46,7 +46,7 @@ Face recognition only - detect and identify faces without image description.
   "image_id": "uuid-from-nodejs",
   "image_path": "/path/to/image.jpg",
   "save_annotated": false,
-  "xmp_faces": [
+  "known_faces": [
     {
       "name": "John Doe",
       "x": 0.45,
@@ -69,8 +69,8 @@ Face recognition only - detect and identify faces without image description.
 ```
 
 - `save_annotated` (optional): When `true`, saves an annotated copy of the image with bounding boxes and face labels to `data/annotated_images/`
-- `xmp_faces` (optional): Array of face regions from EXIF/XMP metadata for automatic face labeling
-- `xmp_regions` (optional): Raw XMP regions object from exiftool-vendored for automatic conversion and face labeling
+- `known_faces` (optional): Array of known face regions for automatic face labeling
+- `xmp_regions` (optional): Raw XMP regions object from exiftool-vendored for automatic conversion to `known_faces` and face labeling
 
 **Response:**
 ```json
@@ -239,7 +239,7 @@ Analyze an image for faces and generate description. This endpoint combines the 
   "image_id": "uuid-from-nodejs",
   "image_path": "/path/to/image.jpg",
   "save_annotated": false,
-  "xmp_faces": [
+  "known_faces": [
     {
       "name": "John Doe",
       "x": 0.45,
@@ -262,7 +262,7 @@ Analyze an image for faces and generate description. This endpoint combines the 
 ```
 
 - `save_annotated` (optional): When `true`, saves an annotated copy of the image with bounding boxes and face labels to `data/annotated_images/`
-- `xmp_faces` (optional): Array of face regions from EXIF/XMP metadata for automatic face labeling
+- `known_faces` (optional): Array of face regions from EXIF/XMP metadata for automatic face labeling
 - `xmp_regions` (optional): Raw XMP regions object from exiftool-vendored for automatic conversion and face labeling
 
 **Response:**
@@ -442,10 +442,10 @@ training_data/
 ... this approach had limitations as InsightFace often failed to detect faces in small thumbnail images, while successfully detecting the same faces in full-resolution photos.
 
 **Current Training Approach:**
-Training now occurs automatically through the `/analyze` and `/faces/recognize` endpoints when `xmp_faces` or `xmp_regions` metadata is provided. This allows the system to learn from full-resolution images with labeled face regions.
+Training now occurs automatically through the `/analyze` and `/faces/recognize` endpoints when `known_faces` or `xmp_regions` metadata is provided. This allows the system to learn from full-resolution images with labeled face regions.
 
 **Processing Order:**
-1. First, process images with labeled faces (using `xmp_faces` or `xmp_regions`)
+1. First, process images with labeled faces (using `known_faces` or `xmp_regions`)
 2. Then, process unlabeled images for automatic face clustering and recognition
 
 This approach leverages the superior face detection capabilities on full images while maintaining accurate face labeling through metadata.
