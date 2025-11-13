@@ -9,7 +9,7 @@ from app.services import analyze_image, recognize_faces, caption_image, encode_i
 from app.core.image_analysis import search
 from app.core import model_loader
 from app.core.face_recognition import storage as face_storage
-from app.core.face_recognition import recognition as face_recognition
+from app.core.face_recognition import clustering as face_clustering
 from app.config import HOST, PORT
 
 app = FastAPI(title="AI Photo Analysis Service", version="1.0.0")
@@ -114,7 +114,7 @@ async def update_face_cluster_name_endpoint(request: UpdatePersonNameRequest):
 @app.post("/faces/correct", response_model=CorrectFaceAssignmentResponse)
 async def correct_face_assignment_endpoint(request: CorrectFaceAssignmentRequest):
     try:
-        success, cluster_id, action, message = face_recognition.correct_face_assignment(request.image_id, request.person_name)
+        success, cluster_id, action, message = face_clustering.correct_face_assignment(request.image_id, request.person_name)
         
         return CorrectFaceAssignmentResponse(
             success=success,

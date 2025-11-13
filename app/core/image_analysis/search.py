@@ -1,5 +1,7 @@
 import numpy as np
 from .storage import get_indices
+from . import embeddings
+from app.schemas import SearchResult
 
 def search_visual(embedding: np.ndarray, k: int = 10):
     """Search for visually similar images"""
@@ -36,3 +38,35 @@ def search_text(embedding: np.ndarray, k: int = 10):
             results.append((image_id, float(score)))
     
     return results
+
+def by_text(query: str, limit: int = 10):
+    """Search for images using text query"""
+    text_embedding = embeddings.encode_text(query)
+    
+    if text_embedding is None:
+        return []
+    
+    results = search_text(text_embedding, k=limit)
+    
+    search_results = [
+        SearchResult(image_id=image_id, score=score)
+        for image_id, score in results
+    ]
+    
+    return search_results
+
+def find_similar(image_path: str, limit: int = 10):
+    """Find visually similar images"""
+    clip_embedding = embeddings.encode_image(image_path)
+    
+    if clip_embedding is None:
+        return []
+    
+    results = search_visual(clip_embedding, k=limit)
+    
+    search_results = [
+        SearchResult(image_id=image_id, score=score)
+        for image_id, score in results
+    ]
+    
+    return search_results

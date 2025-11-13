@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 from typing import List, Optional
 from app.schemas import FaceInfo, XmpFace
-from .xmp_parser import convert_xmp_to_pixels
+from .xmp_processor import convert_xmp_to_pixels
 
 def create_enriched_image(image_path: str, faces: List[FaceInfo], output_dir: str = "data/annotated_images", xmp_faces: Optional[List[XmpFace]] = None) -> str:
     """Create an enriched image with bounding boxes and face labels"""
