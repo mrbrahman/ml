@@ -81,7 +81,6 @@ Face recognition only - detect and identify faces without image description.
     {
       "bbox": [x, y, w, h],
       "confidence": 0.95,
-      "cluster_id": "cluster_abc123",
       "person_name": "John Doe",
       "gender": "M",
       "age": 25,
@@ -97,8 +96,20 @@ Face recognition only - detect and identify faces without image description.
         "pitch": 2.1,
         "roll": 1.8
       },
-      "xmp_matched": true,
-      "xmp_match_confidence": 0.87
+      "cluster": {
+        "cluster_id": "cluster_abc123",
+        "name": "John Doe",
+        "confidence": 0.85,
+        "consensus_count": 3,
+        "reference_image_ids": ["img1", "img2"],
+        "is_new_cluster": false
+      },
+      "xmp": {
+        "matched": true,
+        "name": "John Doe",
+        "confidence": 0.87
+      },
+      "name_mismatch": false
     }
   ],
   "models_used": {
@@ -275,8 +286,7 @@ Analyze an image for faces and generate description. This endpoint combines the 
       {
         "bbox": [x, y, w, h],
         "confidence": 0.95,
-        "cluster_id": "cluster_abc123",
-        "person_name": null,
+        "person_name": "John Doe",
         "gender": "M",
         "age": 25,
         "landmarks": {
@@ -291,8 +301,20 @@ Analyze an image for faces and generate description. This endpoint combines the 
           "pitch": 2.1,
           "roll": 1.8
         },
-        "xmp_matched": true,
-        "xmp_match_confidence": 0.87
+        "cluster": {
+          "cluster_id": "cluster_abc123",
+          "name": null,
+          "confidence": 0.85,
+          "consensus_count": 3,
+          "reference_image_ids": ["img1", "img2"],
+          "is_new_cluster": false
+        },
+        "xmp": {
+          "matched": true,
+          "name": "John Doe",
+          "confidence": 0.87
+        },
+        "name_mismatch": true
       }
     ],
     "models_used": {
@@ -455,3 +477,37 @@ This approach leverages the superior face detection capabilities on full images 
 - Face embeddings and clusters stored in FAISS indices
 - No metadata storage - all returned to calling application
 - Persistent storage in `data/faiss_indices/` directory
+
+## Face Recognition Response Structure
+
+The face recognition response uses a grouped structure for better organization:
+
+### Face Object Fields
+
+- **Basic Detection**: `bbox`, `confidence`, `gender`, `age`, `landmarks`, `pose`
+- **Final Identity**: `person_name` (resolved from XMP or cluster matching)
+- **Cluster Information**: `cluster` object containing:
+  - `cluster_id`: Unique cluster identifier
+  - `name`: Name assigned to cluster (may be null)
+  - `confidence`: Similarity score for cluster match (0.0-1.0)
+  - `consensus_count`: Number of faces that agreed on this cluster
+  - `reference_image_ids`: Image IDs of faces used for matching
+  - `is_new_cluster`: True if this face created a new cluster
+- **XMP Metadata**: `xmp` object containing:
+  - `matched`: True if face matched XMP region data
+  - `name`: Name from XMP metadata (may be null)
+  - `confidence`: IoU confidence for geometric matching
+- **Name Validation**: `name_mismatch` boolean indicating if cluster name differs from XMP name
+
+### Name Mismatch Detection
+
+The system compares names from two sources:
+- **Cluster matching**: Face similarity-based clustering assigns faces to existing named clusters
+- **XMP metadata**: Photo metadata contains manually tagged face regions with names
+
+When these disagree, `name_mismatch` is set to `true`, indicating potential mislabeling that may need manual review.
+
+**Examples:**
+- `name_mismatch: false` - XMP says "John", cluster says "John" ✓
+- `name_mismatch: true` - XMP says "John", cluster says "Mike" ⚠️
+- `name_mismatch: null` - Only one source available
