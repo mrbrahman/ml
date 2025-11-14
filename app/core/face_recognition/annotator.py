@@ -67,7 +67,7 @@ def create_enriched_image(image_path: str, faces: List[FaceInfo], output_dir: st
         if face.person_name:
             top_label = face.person_name
         else:
-            top_label = f"ID: {face.cluster_id}"
+            top_label = f"ID: {face.cluster.cluster_id}"
         
         # Prepare pose text
         bottom_label = ""

@@ -15,22 +15,30 @@ class AnalyzeImageRequest(BaseModel):
     known_faces: Optional[List[XmpFace]] = None
     xmp_regions: Optional[dict] = None  # Raw XMP regions object from exiftool
 
+class ClusterMatch(BaseModel):
+    cluster_id: str
+    name: Optional[str] = None
+    confidence: Optional[float] = None  # Similarity score (0.0-1.0)
+    consensus_count: Optional[int] = None  # How many faces agreed on match
+    reference_image_ids: Optional[List[str]] = None  # Image IDs of matched faces
+    is_new_cluster: bool = False
+
+class XmpMatch(BaseModel):
+    matched: Optional[bool] = None
+    name: Optional[str] = None
+    confidence: Optional[float] = None  # IoU confidence for geometric match
+
 class FaceInfo(BaseModel):
     bbox: List[float]  # [x, y, w, h]
-    confidence: float
-    cluster_id: str
-    person_name: Optional[str] = None
+    confidence: float  # Face detection confidence
+    person_name: Optional[str] = None  # Final resolved name
     gender: Optional[str] = None  # M=male, F=female
     age: Optional[int] = None
     landmarks: Optional[dict] = None  # Named 5-point landmarks
     pose: Optional[dict] = None  # Named head pose angles
-    reference_cluster_id: Optional[str] = None  # ID of matched cluster
-    reference_image_ids: Optional[List[str]] = None  # Image IDs of all matched faces
-    match_confidence: Optional[float] = None  # Similarity score (0.0-1.0)
-    consensus_count: Optional[int] = None  # How many faces agreed on match
-    is_new_cluster: bool = False  # True if this created a new cluster
-    xmp_matched: Optional[bool] = None  # True if matched with XMP face data
-    xmp_match_confidence: Optional[float] = None  # IoU confidence for XMP match
+    cluster: ClusterMatch
+    xmp: XmpMatch
+    name_mismatch: Optional[bool] = None  # True if cluster name differs from XMP name
 
 class NameClusterRequest(BaseModel):
     name: str

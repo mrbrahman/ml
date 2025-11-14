@@ -6,6 +6,8 @@ def detect_faces(image_path):
     """Detect faces with full attributes for regular use"""
     face_app = get_face_model()
     img = cv2.imread(image_path)
+    if img is None:
+        raise ValueError(f"Could not load image: {image_path}")
     faces = face_app.get(img)
     
     results = []

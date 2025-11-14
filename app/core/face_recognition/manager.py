@@ -24,27 +24,43 @@ def recognize(image_id: str, image_path: str, save_annotated: bool = False, know
             image_id, face_data['embedding']
         )
         
-        final_person_name = face_data.get('person_name') or person_name
+        xmp_name = face_data.get('person_name')
+        cluster_name = person_name
         
-        if face_data.get('xmp_matched') and face_data.get('person_name'):
-            storage.name_face_cluster(cluster_id, face_data['person_name'])
+        # Check for name mismatch
+        name_mismatch = None
+        if xmp_name and cluster_name and xmp_name != cluster_name:
+            name_mismatch = True
+        elif xmp_name and cluster_name:
+            name_mismatch = False
+        
+        final_person_name = xmp_name or cluster_name
+        
+        if face_data.get('xmp_matched') and xmp_name:
+            storage.name_face_cluster(cluster_id, xmp_name)
         
         faces_info.append(FaceInfo(
             bbox=face_data['bbox'],
             confidence=face_data['confidence'],
-            cluster_id=cluster_id,
             person_name=final_person_name,
             gender=face_data.get('gender'),
             age=face_data.get('age'),
             landmarks=face_data.get('landmarks'),
             pose=face_data.get('pose'),
-            reference_cluster_id=reference_cluster_id,
-            reference_image_ids=reference_image_ids,
-            match_confidence=match_confidence,
-            consensus_count=consensus_count,
-            is_new_cluster=is_new_cluster,
-            xmp_matched=face_data.get('xmp_matched'),
-            xmp_match_confidence=face_data.get('xmp_match_confidence')
+            cluster=ClusterMatch(
+                cluster_id=cluster_id,
+                name=cluster_name,
+                confidence=match_confidence,
+                consensus_count=consensus_count,
+                reference_image_ids=reference_image_ids,
+                is_new_cluster=is_new_cluster
+            ),
+            xmp=XmpMatch(
+                matched=face_data.get('xmp_matched'),
+                name=xmp_name,
+                confidence=face_data.get('xmp_match_confidence')
+            ),
+            name_mismatch=name_mismatch
         ))
     
     if save_annotated and faces_info:
