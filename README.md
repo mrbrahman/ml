@@ -418,15 +418,17 @@ project/
 │   │   ├── model_loader.py        # Shared model loading and caching
 │   │   ├── face_recognition/      # Face recognition module
 │   │   │   ├── detection.py       # Face detection
-│   │   │   ├── recognition.py     # Face recognition & clustering
+│   │   │   ├── clustering.py      # Face clustering algorithms
+│   │   │   ├── manager.py         # Face recognition manager
 │   │   │   ├── storage.py         # FAISS storage operations
-│   │   │   ├── xmp_parser.py      # XMP metadata parsing
-│   │   │   ├── xmp_matcher.py     # XMP metadata matching
+│   │   │   ├── xmp_processor.py   # XMP metadata processing
 │   │   │   └── annotator.py       # Image annotation
 │   │   └── image_analysis/        # Image description & search module
 │   │       ├── captioning.py      # Image description generation
-│   │       ├── encoding.py        # Image embedding generation
-│   │       └── search.py          # Vector storage & similarity search
+│   │       ├── embeddings.py      # Image embedding generation
+│   │       ├── manager.py         # Image analysis manager
+│   │       ├── search.py          # Vector search functionality
+│   │       └── storage.py         # Vector storage operations
 │   └── utils/             # Utility functions
 ├── data/                  # Runtime data storage
 │   ├── faiss_indices/     # FAISS vector indices
