@@ -1,10 +1,10 @@
 import json
 import cv2
 from typing import List, Union, Optional
-from app.schemas import XmpFace
+from app.schemas import FaceBounds
 
-def parse_xmp_regions(xmp_regions: Union[str, dict, None]) -> List[XmpFace]:
-    """Parse XMP regions (string or dict) and convert to XmpFace objects"""
+def parse_xmp_regions(xmp_regions: Union[str, dict, None], image_width: int = None, image_height: int = None) -> List[FaceBounds]:
+    """Parse XMP regions (string or dict) and convert to FaceBounds objects with top-left coordinates"""
     if xmp_regions is None:
         return []
         
@@ -17,6 +17,13 @@ def parse_xmp_regions(xmp_regions: Union[str, dict, None]) -> List[XmpFace]:
         else:
             regions_data = xmp_regions
         
+        # Get dimensions from XMP if not provided
+        if image_width is None or image_height is None:
+            if 'AppliedToDimensions' in regions_data:
+                dims = regions_data['AppliedToDimensions']
+                image_width = dims.get('W', image_width)
+                image_height = dims.get('H', image_height)
+        
         # Extract face regions
         known_faces = []
         if 'RegionList' in regions_data:
@@ -27,12 +34,22 @@ def parse_xmp_regions(xmp_regions: Union[str, dict, None]) -> List[XmpFace]:
                     
                     # Ensure we have normalized coordinates
                     if area.get('Unit') == 'normalized':
-                        known_face = XmpFace(
+                        # XMP coordinates are center-based, convert to top-left
+                        center_x = float(area['X'])
+                        center_y = float(area['Y'])
+                        w = float(area['W'])
+                        h = float(area['H'])
+                        
+                        # Convert to top-left coordinates
+                        x = center_x - w / 2
+                        y = center_y - h / 2
+                        
+                        known_face = FaceBounds(
                             name=region['Name'],
-                            x=float(area['X']),
-                            y=float(area['Y']),
-                            w=float(area['W']),
-                            h=float(area['H'])
+                            x=x,
+                            y=y,
+                            w=w,
+                            h=h
                         )
                         known_faces.append(known_face)
         
@@ -42,17 +59,13 @@ def parse_xmp_regions(xmp_regions: Union[str, dict, None]) -> List[XmpFace]:
         print(f"Error parsing XMP regions: {e}")
         return []
 
-def convert_xmp_to_pixels(known_face: XmpFace, image_width: int, image_height: int) -> List[float]:
-    """Convert normalized XMP coordinates to pixel coordinates"""
-    # XMP coordinates are center-based
-    center_x = known_face.x * image_width
-    center_y = known_face.y * image_height
+def convert_to_pixels(known_face: FaceBounds, image_width: int, image_height: int) -> List[float]:
+    """Convert normalized top-left coordinates to pixel coordinates"""
+    x1 = known_face.x * image_width
+    y1 = known_face.y * image_height
     w = known_face.w * image_width
     h = known_face.h * image_height
     
-    # Convert center-based to top-left corner based
-    x1 = center_x - w / 2
-    y1 = center_y - h / 2
     x2 = x1 + w
     y2 = y1 + h
     
@@ -98,7 +111,7 @@ def calculate_iou(box1: List[float], box2: List[float]) -> float:
     
     return intersection / union if union > 0 else 0.0
 
-def match_known_faces(detected_faces: List[dict], known_faces: Optional[List[XmpFace]], image_path: str, containment_threshold: float = 0.7, iou_threshold: float = 0.08) -> tuple[List[dict], List[XmpFace]]:
+def match_known_faces(detected_faces: List[dict], known_faces: Optional[List[FaceBounds]], image_path: str, containment_threshold: float = 0.7, iou_threshold: float = 0.08) -> tuple[List[dict], List[FaceBounds]]:
     """Match detected faces with XMP face regions and assign names
     
     Returns:
@@ -114,10 +127,10 @@ def match_known_faces(detected_faces: List[dict], known_faces: Optional[List[Xmp
     
     image_height, image_width = img.shape[:2]
     
-    # Convert XMP faces to pixel coordinates
+    # Convert known faces to pixel coordinates
     xmp_pixel_faces = []
     for known_face in known_faces:
-        pixel_coords = convert_xmp_to_pixels(known_face, image_width, image_height)
+        pixel_coords = convert_to_pixels(known_face, image_width, image_height)
         xmp_pixel_faces.append({
             'name': known_face.name,
             'bbox': pixel_coords,
@@ -157,12 +170,12 @@ def match_known_faces(detected_faces: List[dict], known_faces: Optional[List[Xmp
         # Add XMP match information
         if best_match:
             face['person_name'] = best_match['name']
-            face['xmp_matched'] = True
-            face['xmp_match_confidence'] = best_score
+            face['input_face_matched'] = True
+            face['input_face_match_confidence'] = best_score
             matched_input_faces.add(best_match_idx)
         else:
-            face['xmp_matched'] = False
-            face['xmp_match_confidence'] = 0.0
+            face['input_face_matched'] = False
+            face['input_face_match_confidence'] = 0.0
         
         matched_faces.append(face)
     

@@ -3,10 +3,10 @@ from app.schemas import *
 from app.core.face_recognition import manager as faces
 from app.core.image_analysis import manager as images, search
 
-def analyze_image(image_id: str, image_path: str, known_faces: Optional[List[XmpFace]] = None, xmp_regions: Optional[dict] = None, save_annotated: bool = False) -> CompositeAnalyzeResponse:
+def analyze_image(image_id: str, image_path: str, known_faces: Optional[List[FaceBounds]] = None, xmp_regions: Optional[dict] = None, save_annotated: bool = False) -> CompositeAnalyzeResponse:
     return images.analyze_composite(image_id, image_path, known_faces, xmp_regions, save_annotated)
 
-def recognize_faces(image_id: str, image_path: str, save_annotated: bool = False, known_faces: Optional[List[XmpFace]] = None, xmp_regions: Optional[dict] = None) -> FaceRecognitionResponse:
+def recognize_faces(image_id: str, image_path: str, save_annotated: bool = False, known_faces: Optional[List[FaceBounds]] = None, xmp_regions: Optional[dict] = None) -> FaceRecognitionResponse:
     return faces.recognize(image_id, image_path, save_annotated, known_faces, xmp_regions)
 
 

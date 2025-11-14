@@ -7,7 +7,7 @@ from .annotator import create_enriched_image
 from . import storage
 from app.config import MODEL_NAMES
 
-def recognize(image_id: str, image_path: str, save_annotated: bool = False, known_faces: Optional[List[XmpFace]] = None, xmp_regions: Optional[dict] = None) -> FaceRecognitionResponse:
+def recognize(image_id: str, image_path: str, save_annotated: bool = False, known_faces: Optional[List[FaceBounds]] = None, xmp_regions: Optional[dict] = None) -> FaceRecognitionResponse:
     """Face recognition only"""
     storage.remove_face_embeddings(image_id)
     faces_data = detect_faces(image_path)
@@ -25,20 +25,20 @@ def recognize(image_id: str, image_path: str, save_annotated: bool = False, know
             image_id, face_data['embedding']
         )
         
-        xmp_name = face_data.get('person_name')
+        input_name = face_data.get('person_name')
         cluster_name = person_name
         
         # Check for name mismatch
         name_mismatch = None
-        if xmp_name and cluster_name and xmp_name != cluster_name:
+        if input_name and cluster_name and input_name != cluster_name:
             name_mismatch = True
-        elif xmp_name and cluster_name:
+        elif input_name and cluster_name:
             name_mismatch = False
         
-        final_person_name = xmp_name or cluster_name
+        final_person_name = input_name or cluster_name
         
-        if face_data.get('xmp_matched') and xmp_name:
-            storage.name_face_cluster(cluster_id, xmp_name)
+        if face_data.get('input_face_matched') and input_name:
+            storage.name_face_cluster(cluster_id, input_name)
         
         faces_info.append(FaceInfo(
             bbox=face_data['bbox'],
@@ -56,10 +56,10 @@ def recognize(image_id: str, image_path: str, save_annotated: bool = False, know
                 reference_image_ids=reference_image_ids,
                 is_new_cluster=is_new_cluster
             ),
-            xmp=XmpMatch(
-                matched=face_data.get('xmp_matched'),
-                name=xmp_name,
-                confidence=face_data.get('xmp_match_confidence')
+            input_face_match=InputFaceMatch(
+                matched=face_data.get('input_face_matched'),
+                name=input_name,
+                confidence=face_data.get('input_face_match_confidence')
             ),
             name_mismatch=name_mismatch
         ))

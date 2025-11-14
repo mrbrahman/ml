@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import List, Optional
 
-class XmpFace(BaseModel):
+class FaceBounds(BaseModel):
     name: str
     x: float  # Normalized coordinates (0.0-1.0)
     y: float
@@ -12,7 +12,7 @@ class AnalyzeImageRequest(BaseModel):
     image_id: str
     image_path: str
     save_annotated: Optional[bool] = False
-    known_faces: Optional[List[XmpFace]] = None
+    known_faces: Optional[List[FaceBounds]] = None
     xmp_regions: Optional[dict] = None  # Raw XMP regions object from exiftool
 
 class ClusterMatch(BaseModel):
@@ -23,7 +23,7 @@ class ClusterMatch(BaseModel):
     reference_image_ids: Optional[List[str]] = None  # Image IDs of matched faces
     is_new_cluster: bool = False
 
-class XmpMatch(BaseModel):
+class InputFaceMatch(BaseModel):
     matched: Optional[bool] = None
     name: Optional[str] = None
     confidence: Optional[float] = None  # IoU confidence for geometric match
@@ -37,8 +37,8 @@ class FaceInfo(BaseModel):
     landmarks: Optional[dict] = None  # Named 5-point landmarks
     pose: Optional[dict] = None  # Named head pose angles
     cluster: ClusterMatch
-    xmp: XmpMatch
-    name_mismatch: Optional[bool] = None  # True if cluster name differs from XMP name
+    input_face_match: InputFaceMatch
+    name_mismatch: Optional[bool] = None  # True if cluster name differs from input name
 
 class NameClusterRequest(BaseModel):
     name: str
@@ -65,7 +65,7 @@ class FaceRecognitionResponse(BaseModel):
     image_id: str
     image_path: str
     faces: List[FaceInfo]
-    unmatched_input_faces: List[XmpFace]
+    unmatched_input_faces: List[FaceBounds]
     models_used: dict
 
 class ClusterInfo(BaseModel):

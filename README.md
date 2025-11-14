@@ -69,7 +69,7 @@ Face recognition only - detect and identify faces without image description.
 ```
 
 - `save_annotated` (optional): When `true`, saves an annotated copy of the image with bounding boxes and face labels to `data/annotated_images/`
-- `known_faces` (optional): Array of known face regions for automatic face labeling
+- `known_faces` (optional): Array of known face regions for automatic face labeling. **Coordinates must be normalized (0.0-1.0) and use top-left corner format (x, y, width, height)**
 - `xmp_regions` (optional): Raw XMP regions object from exiftool-vendored for automatic conversion to `known_faces` and face labeling
 
 **Response:**
@@ -282,7 +282,7 @@ Analyze an image for faces and generate description. This endpoint combines the 
 ```
 
 - `save_annotated` (optional): When `true`, saves an annotated copy of the image with bounding boxes and face labels to `data/annotated_images/`
-- `known_faces` (optional): Array of face regions from EXIF/XMP metadata for automatic face labeling
+- `known_faces` (optional): Array of face regions from EXIF/XMP metadata for automatic face labeling. **Coordinates must be normalized (0.0-1.0) and use top-left corner format (x, y, width, height)**
 - `xmp_regions` (optional): Raw XMP regions object from exiftool-vendored for automatic conversion and face labeling
 
 **Response:**
