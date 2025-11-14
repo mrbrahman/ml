@@ -15,8 +15,9 @@ def recognize(image_id: str, image_path: str, save_annotated: bool = False, know
     if xmp_regions and not known_faces:
         known_faces = parse_xmp_regions(xmp_regions)
     
+    unmatched_input_faces = []
     if known_faces:
-        faces_data = match_known_faces(faces_data, known_faces, image_path)
+        faces_data, unmatched_input_faces = match_known_faces(faces_data, known_faces, image_path)
     
     faces_info = []
     for face_data in faces_data:
@@ -66,10 +67,13 @@ def recognize(image_id: str, image_path: str, save_annotated: bool = False, know
     if save_annotated and faces_info:
         create_enriched_image(image_path, faces_info, known_faces=known_faces)
     
+
+    
     return FaceRecognitionResponse(
         image_id=image_id,
         image_path=image_path,
         faces=faces_info,
+        unmatched_input_faces=unmatched_input_faces,
         models_used={"face_detection": MODEL_NAMES["face_detection"]}
     )
 

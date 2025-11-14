@@ -65,6 +65,7 @@ class FaceRecognitionResponse(BaseModel):
     image_id: str
     image_path: str
     faces: List[FaceInfo]
+    unmatched_input_faces: List[XmpFace]
     models_used: dict
 
 class ClusterInfo(BaseModel):

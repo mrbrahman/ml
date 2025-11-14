@@ -98,15 +98,19 @@ def calculate_iou(box1: List[float], box2: List[float]) -> float:
     
     return intersection / union if union > 0 else 0.0
 
-def match_known_faces(detected_faces: List[dict], known_faces: Optional[List[XmpFace]], image_path: str, containment_threshold: float = 0.7, iou_threshold: float = 0.08) -> List[dict]:
-    """Match detected faces with XMP face regions and assign names"""
+def match_known_faces(detected_faces: List[dict], known_faces: Optional[List[XmpFace]], image_path: str, containment_threshold: float = 0.7, iou_threshold: float = 0.08) -> tuple[List[dict], List[XmpFace]]:
+    """Match detected faces with XMP face regions and assign names
+    
+    Returns:
+        tuple: (matched_faces, unmatched_input_faces)
+    """
     if not known_faces or known_faces is None:
-        return detected_faces
+        return detected_faces, []
     
     # Get image dimensions
     img = cv2.imread(image_path)
     if img is None:
-        return detected_faces
+        return detected_faces, known_faces
     
     image_height, image_width = img.shape[:2]
     
@@ -116,8 +120,12 @@ def match_known_faces(detected_faces: List[dict], known_faces: Optional[List[Xmp
         pixel_coords = convert_xmp_to_pixels(known_face, image_width, image_height)
         xmp_pixel_faces.append({
             'name': known_face.name,
-            'bbox': pixel_coords
+            'bbox': pixel_coords,
+            'original': known_face
         })
+    
+    # Track which input faces were matched
+    matched_input_faces = set()
     
     # Match detected faces with XMP faces
     matched_faces = []
@@ -125,14 +133,16 @@ def match_known_faces(detected_faces: List[dict], known_faces: Optional[List[Xmp
         best_match = None
         best_score = 0.0
         match_type = "none"
+        best_match_idx = -1
         
-        for known_face in xmp_pixel_faces:
+        for idx, known_face in enumerate(xmp_pixel_faces):
             # Try containment first
             containment = calculate_containment(face['bbox'], known_face['bbox'])
             if containment >= containment_threshold:
                 if containment > best_score:
                     best_score = containment
                     best_match = known_face
+                    best_match_idx = idx
                     match_type = "containment"
             
             # Fallback to IoU if no good containment match
@@ -141,6 +151,7 @@ def match_known_faces(detected_faces: List[dict], known_faces: Optional[List[Xmp
                 if iou >= iou_threshold and iou > best_score:
                     best_score = iou
                     best_match = known_face
+                    best_match_idx = idx
                     match_type = "iou"
         
         # Add XMP match information
@@ -148,10 +159,17 @@ def match_known_faces(detected_faces: List[dict], known_faces: Optional[List[Xmp
             face['person_name'] = best_match['name']
             face['xmp_matched'] = True
             face['xmp_match_confidence'] = best_score
+            matched_input_faces.add(best_match_idx)
         else:
             face['xmp_matched'] = False
             face['xmp_match_confidence'] = 0.0
         
         matched_faces.append(face)
     
-    return matched_faces
+    # Find unmatched input faces
+    unmatched_input_faces = []
+    for idx, xmp_face in enumerate(xmp_pixel_faces):
+        if idx not in matched_input_faces:
+            unmatched_input_faces.append(xmp_face['original'])
+    
+    return matched_faces, unmatched_input_faces

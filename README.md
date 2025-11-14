@@ -112,6 +112,15 @@ Face recognition only - detect and identify faces without image description.
       "name_mismatch": false
     }
   ],
+  "unmatched_input_faces": [
+    {
+      "name": "Jane Smith",
+      "x": 0.25,
+      "y": 0.35,
+      "w": 0.10,
+      "h": 0.15
+    }
+  ],
   "models_used": {
     "face_detection": "buffalo_l"
   }
@@ -317,6 +326,15 @@ Analyze an image for faces and generate description. This endpoint combines the 
         "name_mismatch": true
       }
     ],
+    "unmatched_input_faces": [
+      {
+        "name": "Jane Smith",
+        "x": 0.25,
+        "y": 0.35,
+        "w": 0.10,
+        "h": 0.15
+      }
+    ],
     "models_used": {
       "face_detection": "buffalo_l"
     }
@@ -500,6 +518,15 @@ The face recognition response uses a grouped structure for better organization:
   - `name`: Name from XMP metadata (may be null)
   - `confidence`: IoU confidence for geometric matching
 - **Name Validation**: `name_mismatch` boolean indicating if cluster name differs from XMP name
+
+### Unmatched Input Faces
+
+The `unmatched_input_faces` array contains faces from the input (`known_faces` or `xmp_regions`) that were not detected in the image. This helps identify:
+- Faces that may be too small, blurry, or obscured for detection
+- Incorrectly tagged face regions in metadata
+- Faces that require manual review or re-tagging
+
+Each unmatched face includes the original normalized coordinates and name from the input.
 
 ### Name Mismatch Detection
 
