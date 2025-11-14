@@ -1,6 +1,6 @@
 import numpy as np
 from typing import Tuple, Optional, List
-from app.config import FACE_SIMILARITY_THRESHOLD, FACE_MATCH_TOP_K
+from app.config import FACE_SIMILARITY_THRESHOLD, FACE_MATCH_TOP_K, CLUSTER_SUGGESTION_THRESHOLD
 import uuid
 from . import storage
 
@@ -50,6 +50,62 @@ def add_face_embedding(image_id: str, embedding: np.ndarray) -> Tuple[str, Optio
     new_idx = storage.add_face_to_index(embedding)
     storage.create_new_cluster(cluster_id, new_idx, image_id)
     return cluster_id, None, None, None, None, None, True
+
+def get_cluster_name_suggestions(cluster_id: Optional[str] = None, min_similarity: Optional[float] = None) -> List[dict]:
+    """Get name suggestions for unnamed clusters based on nearest named cluster centroids"""
+    face_clusters, face_cluster_names = storage.get_face_clusters()
+    face_index = storage.get_face_index()
+    
+    if face_index.ntotal == 0:
+        return []
+    
+    # Separate named and unnamed clusters
+    named_clusters = {cid: indices for cid, indices in face_clusters.items() if cid in face_cluster_names}
+    unnamed_clusters = {cid: indices for cid, indices in face_clusters.items() if cid not in face_cluster_names}
+    
+    if not named_clusters or not unnamed_clusters:
+        return []
+    
+    # Filter to specific cluster if provided
+    if cluster_id:
+        if cluster_id not in unnamed_clusters:
+            return []
+        unnamed_clusters = {cluster_id: unnamed_clusters[cluster_id]}
+    
+    # Calculate centroids for named clusters
+    named_centroids = {}
+    for cid, face_indices in named_clusters.items():
+        embeddings = [face_index.reconstruct(idx) for idx in face_indices]
+        centroid = np.mean(embeddings, axis=0)
+        named_centroids[cid] = centroid
+    
+    suggestions = []
+    
+    # For each unnamed cluster, find nearest named cluster
+    for cid, face_indices in unnamed_clusters.items():
+        embeddings = [face_index.reconstruct(idx) for idx in face_indices]
+        unnamed_centroid = np.mean(embeddings, axis=0)
+        
+        best_match = None
+        best_similarity = -1
+        
+        for named_id, named_centroid in named_centroids.items():
+            similarity = np.dot(unnamed_centroid, named_centroid)
+            if similarity > best_similarity:
+                best_similarity = similarity
+                best_match = named_id
+        
+        threshold = min_similarity if min_similarity is not None else CLUSTER_SUGGESTION_THRESHOLD
+        if best_match and best_similarity >= threshold:
+            suggestions.append({
+                "cluster_id": cid,
+                "face_count": len(face_indices),
+                "suggested_name": face_cluster_names[best_match],
+                "similarity_score": float(best_similarity),
+                "reference_cluster_id": best_match
+            })
+    
+    return sorted(suggestions, key=lambda x: x["similarity_score"], reverse=True)
 
 def correct_face_assignment(image_id: str, person_name: str) -> Tuple[bool, str, str, str]:
     """Correct face assignment by moving to best cluster for given person name"""

@@ -200,6 +200,28 @@ Get information about face clusters and recognition statistics.
 }
 ```
 
+#### GET /faces/suggestions
+Get name suggestions for unnamed clusters based on centroid analysis with nearest named clusters.
+
+**Query Parameters:**
+- `cluster_id` (optional): Specific cluster ID to get suggestions for
+- `min_similarity` (optional): Minimum similarity score threshold (default: 0.6)
+
+**Response:**
+```json
+{
+  "suggestions": [
+    {
+      "cluster_id": "cluster_def456",
+      "face_count": 3,
+      "suggested_name": "John Doe",
+      "similarity_score": 0.82,
+      "reference_cluster_id": "cluster_abc123"
+    }
+  ]
+}
+```
+
 ### Image Analysis
 
 #### POST /images/caption

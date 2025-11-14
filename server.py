@@ -129,6 +129,14 @@ async def correct_face_assignment_endpoint(request: CorrectFaceAssignmentRequest
 async def get_face_info():
     return get_cluster_info()
 
+@app.get("/faces/suggestions")
+async def get_cluster_name_suggestions(cluster_id: str = None, min_similarity: float = None):
+    try:
+        suggestions = face_clustering.get_cluster_name_suggestions(cluster_id, min_similarity)
+        return {"suggestions": suggestions}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get suggestions: {str(e)}")
+
 @app.get("/health")
 async def health_check():
     try:
