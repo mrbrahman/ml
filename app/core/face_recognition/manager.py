@@ -2,7 +2,7 @@ from typing import List, Optional
 from app.schemas import *
 from .detection import detect_faces
 from .xmp_processor import parse_xmp_regions, match_known_faces
-from .clustering import add_face_embedding, correct_face_assignment
+from .clustering import match_and_cluster_face, correct_face_assignment
 from .annotator import create_enriched_image
 from . import storage
 from app.config import MODEL_NAMES
@@ -21,7 +21,7 @@ def recognize(image_id: str, image_path: str, save_annotated: bool = False, know
     
     faces_info = []
     for face_data in faces_data:
-        cluster_id, person_name, reference_cluster_id, reference_image_ids, match_confidence, consensus_count, is_new_cluster = add_face_embedding(
+        cluster_id, person_name, reference_cluster_id, reference_image_ids, match_confidence, consensus_count, is_new_cluster = match_and_cluster_face(
             image_id, face_data['embedding']
         )
         

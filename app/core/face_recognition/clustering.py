@@ -4,8 +4,8 @@ from app.config import FACE_SIMILARITY_THRESHOLD, FACE_MATCH_TOP_K, CLUSTER_SUGG
 import uuid
 from . import storage
 
-def add_face_embedding(image_id: str, embedding: np.ndarray) -> Tuple[str, Optional[str], Optional[str], Optional[List[str]], Optional[float], Optional[int], bool]:
-    """Add face embedding and return cluster_id, person_name, reference_cluster_id, reference_image_ids, match_confidence, consensus_count, is_new_cluster"""
+def match_and_cluster_face(image_id: str, embedding: np.ndarray) -> Tuple[str, Optional[str], Optional[str], Optional[List[str]], Optional[float], Optional[int], bool]:
+    """Match face embedding against existing clusters and assign to best match or create new cluster. Returns cluster_id, person_name, reference_cluster_id, reference_image_ids, match_confidence, consensus_count, is_new_cluster"""
     embedding = embedding.reshape(1, -1).astype('float32')
     
     # Multi-candidate face matching with cluster consensus
@@ -46,7 +46,7 @@ def add_face_embedding(image_id: str, embedding: np.ndarray) -> Tuple[str, Optio
             return best_cluster, person_name, best_cluster, reference_image_ids, best_score, consensus_count, False
     
     # Create new cluster
-    cluster_id = f"cluster_{uuid.uuid4().hex[:8]}"
+    cluster_id = f"cluster_{uuid.uuid4().hex[:16]}"
     new_idx = storage.add_face_to_index(embedding)
     storage.create_new_cluster(cluster_id, new_idx, image_id)
     return cluster_id, None, None, None, None, None, True
@@ -157,6 +157,6 @@ def correct_face_assignment(image_id: str, person_name: str) -> Tuple[bool, str,
             return True, best_cluster_id, "moved_to_existing", f"Moved to existing cluster for {person_name}"
     
     # Create new cluster for this person
-    new_cluster_id = f"cluster_{uuid.uuid4().hex[:8]}"
+    new_cluster_id = f"cluster_{uuid.uuid4().hex[:16]}"
     storage.move_face_to_new_cluster(face_idx, current_cluster_id, new_cluster_id, person_name)
     return True, new_cluster_id, "created_new", f"Created new cluster for {person_name}"
