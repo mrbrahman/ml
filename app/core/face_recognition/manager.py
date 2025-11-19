@@ -13,7 +13,7 @@ def recognize(image_id: str, image_path: str, save_annotated: bool = False, know
     faces_data = detect_faces(image_path)
     
     if xmp_regions and not known_faces:
-        known_faces = parse_xmp_regions(xmp_regions)
+        known_faces = parse_xmp_regions(xmp_regions, image_path)
     
     unmatched_input_faces = []
     if known_faces:

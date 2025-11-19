@@ -1,9 +1,11 @@
 import json
 import cv2
+from PIL import Image
 from typing import List, Union, Optional
 from app.schemas import FaceBounds
+from app.config import LEGACY_XMP_SOFTWARE
 
-def parse_xmp_regions(xmp_regions: Union[str, dict, None], image_width: int = None, image_height: int = None) -> List[FaceBounds]:
+def parse_xmp_regions(xmp_regions: Union[str, dict, None], image_path: str = None, image_width: int = None, image_height: int = None) -> List[FaceBounds]:
     """Parse XMP regions (string or dict) and convert to FaceBounds objects with top-left coordinates"""
     if xmp_regions is None:
         return []
@@ -24,6 +26,21 @@ def parse_xmp_regions(xmp_regions: Union[str, dict, None], image_width: int = No
                 image_width = dims.get('W', image_width)
                 image_height = dims.get('H', image_height)
         
+        # Get EXIF orientation and software info if image_path provided
+        orientation = 1  # Default (no rotation)
+        is_picasa_format = False
+        if image_path:
+            try:
+                with Image.open(image_path) as pil_img:
+                    if hasattr(pil_img, '_getexif'):
+                        exif = pil_img._getexif()
+                        if exif:
+                            orientation = exif.get(274, 1)
+                            software = exif.get(305, '')  # Software tag
+                            is_picasa_format = any(legacy_sw in str(software) for legacy_sw in LEGACY_XMP_SOFTWARE)
+            except:
+                pass
+        
         # Extract face regions
         known_faces = []
         if 'RegionList' in regions_data:
@@ -43,6 +60,23 @@ def parse_xmp_regions(xmp_regions: Union[str, dict, None], image_width: int = No
                         # Convert to top-left coordinates
                         x = center_x - w / 2
                         y = center_y - h / 2
+                        
+                        # Transform coordinates based on EXIF orientation (only for Picasa format)
+                        if is_picasa_format and orientation != 1:
+                            if orientation == 2:  # Flip horizontal
+                                x = 1 - x - w
+                            elif orientation == 3:  # 180° rotation
+                                x, y = 1 - x - w, 1 - y - h
+                            elif orientation == 4:  # Flip vertical
+                                y = 1 - y - h
+                            elif orientation == 5:  # 90° CCW + flip horizontal
+                                x, y, w, h = y, x, h, w
+                            elif orientation == 6:  # 90° clockwise
+                                x, y, w, h = 1 - y - h, x, h, w
+                            elif orientation == 7:  # 90° CW + flip horizontal
+                                x, y, w, h = 1 - y - h, 1 - x - w, h, w
+                            elif orientation == 8:  # 90° counter-clockwise
+                                x, y, w, h = y, 1 - x - w, h, w
                         
                         known_face = FaceBounds(
                             name=region['Name'],

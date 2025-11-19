@@ -27,6 +27,9 @@ FACE_INDEX_FILE = "faces.index"
 VISUAL_INDEX_FILE = "visual.index"
 TEXT_INDEX_FILE = "text.index"
 
+# XMP Configuration
+LEGACY_XMP_SOFTWARE = ["Picasa"]  # Software that uses sensor-relative coordinates
+
 # API Configuration
 HOST = "0.0.0.0"
 PORT = 8000
