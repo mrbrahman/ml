@@ -126,8 +126,8 @@ async def correct_face_assignment_endpoint(request: CorrectFaceAssignmentRequest
         raise HTTPException(status_code=500, detail=f"Face correction failed: {str(e)}")
 
 @app.get("/faceinfo", response_model=InfoResponse)
-async def get_face_info():
-    return get_cluster_info()
+async def get_face_info(cluster_id: str = None, person_name: str = None):
+    return get_cluster_info(cluster_id, person_name)
 
 @app.get("/faces/suggestions")
 async def get_cluster_name_suggestions(cluster_id: str = None, min_similarity: float = None):

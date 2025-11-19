@@ -77,19 +77,27 @@ def recognize(image_id: str, image_path: str, save_annotated: bool = False, know
         models_used={"face_detection": MODEL_NAMES["face_detection"]}
     )
 
-def get_cluster_info() -> InfoResponse:
-    """Get face cluster information"""
+def get_cluster_info(cluster_id: str = None, person_name: str = None) -> InfoResponse:
+    """Get face cluster information, optionally filtered by cluster_id or person_name"""
     clusters = []
     named_count = 0
     
     face_clusters, face_cluster_names = storage.get_face_clusters()
-    for cluster_id, face_indices in face_clusters.items():
-        name = face_cluster_names.get(cluster_id)
+    
+    for cid, face_indices in face_clusters.items():
+        name = face_cluster_names.get(cid)
+        
+        # Apply filters
+        if cluster_id and cid != cluster_id:
+            continue
+        if person_name and name != person_name:
+            continue
+            
         if name:
             named_count += 1
         
         clusters.append(ClusterInfo(
-            cluster_id=cluster_id,
+            cluster_id=cid,
             name=name,
             face_count=len(face_indices)
         ))

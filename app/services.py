@@ -17,8 +17,8 @@ def search_by_text(query: str, limit: int = 10):
 def find_similar_images(image_path: str, limit: int = 10):
     return search.find_similar(image_path, limit)
 
-def get_cluster_info() -> InfoResponse:
-    return faces.get_cluster_info()
+def get_cluster_info(cluster_id: str = None, person_name: str = None) -> InfoResponse:
+    return faces.get_cluster_info(cluster_id, person_name)
 
 def caption_image(image_id: str, image_path: str) -> ImageCaptionResponse:
     return images.generate_caption(image_id, image_path)

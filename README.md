@@ -180,6 +180,15 @@ Correct a face assignment by providing the correct person name. The system will 
 #### GET /faceinfo
 Get information about face clusters and recognition statistics.
 
+**Query Parameters:**
+- `cluster_id` (optional): Filter results to specific cluster ID
+- `person_name` (optional): Filter results to clusters with specific person name
+
+**Usage Examples:**
+- `GET /faceinfo` - Returns all clusters
+- `GET /faceinfo?cluster_id=cluster_abc123` - Returns only the specified cluster
+- `GET /faceinfo?person_name=John%20Doe` - Returns all clusters named "John Doe"
+
 **Response:**
 ```json
 {
