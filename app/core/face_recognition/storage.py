@@ -6,10 +6,10 @@ from typing import Tuple, Optional, List
 from app.config import FAISS_INDEX_DIR, FACE_INDEX_FILE
 
 # Global face storage state
-_face_index = None
-_face_id_mapping = {}
-_face_clusters = {}
-_face_cluster_names = {}
+_face_index = None  # FAISS index storing 512-dim face embeddings for similarity search
+_face_id_mapping = {}  # Maps FAISS index position to image_id: {0: "img_123", 1: "img_456"}
+_face_clusters = {}  # Groups face indices by cluster: {"cluster_abc": [0, 5, 12], "cluster_def": [1, 3]}
+_face_cluster_names = {}  # Maps cluster IDs to person names: {"cluster_abc": "John Doe", "cluster_def": "Jane Smith"}
 
 def _load_face_index():
     """Load existing face FAISS index or create new one"""
@@ -122,17 +122,15 @@ def name_face_cluster(cluster_id: str, name: str):
 
 def remove_face_embeddings(image_id: str):
     """Remove face embeddings for a specific image_id"""
-    removed_count = 0
+    # Find indices to remove
+    indices_to_remove = [idx for idx, stored_id in _face_id_mapping.items() if stored_id == image_id]
+    
+    if not indices_to_remove:
+        return  # No faces found for this image_id
     
     # Remove face embeddings
-    indices_to_remove = []
-    for idx, stored_id in _face_id_mapping.items():
-        if stored_id == image_id:
-            indices_to_remove.append(idx)
-    
     for idx in indices_to_remove:
         del _face_id_mapping[idx]
-        removed_count += 1
         # Remove from clusters
         for cluster_id, face_indices in list(_face_clusters.items()):
             if idx in face_indices:
@@ -142,8 +140,8 @@ def remove_face_embeddings(image_id: str):
                     if cluster_id in _face_cluster_names:
                         del _face_cluster_names[cluster_id]
     
-    if removed_count > 0:
-        print(f"Removed {removed_count} face embeddings for {image_id}")
+    print(f"Removed {len(indices_to_remove)} face embeddings for {image_id}")
+    _save_face_mappings()
 
 # Initialize face index on module import
 _load_face_index()
