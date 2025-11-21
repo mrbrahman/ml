@@ -4,6 +4,29 @@ from app.config import FACE_SIMILARITY_THRESHOLD, FACE_MATCH_TOP_K, CLUSTER_SUGG
 import uuid
 from . import storage
 
+def create_cluster_id() -> str:
+    """Create a new face cluster ID"""
+    
+    # We want to make this fast, realistically collision free, but not too lenghty
+    # A 'seq' would have been a good solution, but since we have to manage
+    # storage of the sequence, that's a bit complicated solution for a simple problem.
+    # Hence sticking to creating a UUID, but not using the entire string
+
+    # UUID collision probabilities:
+    
+    # 8 chars (32 bits): ~4.3B possible values
+    #  50.0% collision chance at ~65K clusters
+    #   1.0% at ~9000 clusters
+    #   0.1% at ~2,900 clusters
+    
+    # 16 chars (64 bits): ~18.4 quintillion values
+    #  50.0% collision chance at ~3B clusters
+    #   1.0% at ~430M clusters
+    #   0.1% at ~136 million clusters
+    
+    # Using 16 chars for production safety - can handle millions of clusters before meaningful collision risk
+    return f"cluster_{uuid.uuid4().hex[:16]}"
+
 def match_and_cluster_face(image_id: str, embedding: np.ndarray) -> Tuple[str, Optional[str], Optional[str], Optional[List[str]], Optional[float], Optional[int], bool]:
     """Match face embedding against existing clusters and assign to best match or create new cluster. Returns cluster_id, person_name, reference_cluster_id, reference_image_ids, match_confidence, consensus_count, is_new_cluster"""
     embedding = embedding.reshape(1, -1).astype('float32')
@@ -46,7 +69,7 @@ def match_and_cluster_face(image_id: str, embedding: np.ndarray) -> Tuple[str, O
             return best_cluster, person_name, best_cluster, reference_image_ids, best_score, consensus_count, False
     
     # Create new cluster
-    cluster_id = f"cluster_{uuid.uuid4().hex[:16]}"
+    cluster_id = create_cluster_id()
     new_idx = storage.add_face_to_index(embedding)
     storage.create_new_cluster(cluster_id, new_idx, image_id)
     return cluster_id, None, None, None, None, None, True
@@ -157,6 +180,6 @@ def correct_face_assignment(image_id: str, person_name: str) -> Tuple[bool, str,
             return True, best_cluster_id, "moved_to_existing", f"Moved to existing cluster for {person_name}"
     
     # Create new cluster for this person
-    new_cluster_id = f"cluster_{uuid.uuid4().hex[:16]}"
+    new_cluster_id = create_cluster_id()
     storage.move_face_to_new_cluster(face_idx, current_cluster_id, new_cluster_id, person_name)
     return True, new_cluster_id, "created_new", f"Created new cluster for {person_name}"
