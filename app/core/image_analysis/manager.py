@@ -1,9 +1,13 @@
 from app.schemas import *
 from . import captioning, embeddings, storage
 from app.config import MODEL_NAMES
+from app.utils.logging import get_logger
+
+logger = get_logger(__name__)
 
 def generate_caption(image_id: str, image_path: str) -> ImageCaptionResponse:
     """Generate image caption using BLIP"""
+    logger.debug(f"Generating caption for {image_id}")
     description = captioning.generate_description(image_path)
     
     # Check if description indicates model failure
@@ -21,6 +25,7 @@ def generate_caption(image_id: str, image_path: str) -> ImageCaptionResponse:
 
 def encode_image(image_id: str, image_path: str) -> ImageEncodeResponse:
     """Generate and store image embedding using CLIP"""
+    logger.debug(f"Encoding image {image_id}")
     storage.remove_search_embeddings(image_id)
     
     clip_embedding = embeddings.encode_image(image_path)
@@ -43,6 +48,7 @@ def encode_image(image_id: str, image_path: str) -> ImageEncodeResponse:
 
 def analyze_composite(image_id: str, image_path: str, known_faces=None, xmp_regions=None, save_annotated: bool = False) -> CompositeAnalyzeResponse:
     """Analyze image for faces and generate description by calling individual services"""
+    logger.info(f"Starting composite analysis for {image_id}")
     from app.core.face_recognition import manager as face_manager
     
     # Call face recognition service
@@ -54,6 +60,7 @@ def analyze_composite(image_id: str, image_path: str, known_faces=None, xmp_regi
     # Call image encoding service
     encode_response = encode_image(image_id, image_path)
     
+    logger.info(f"Composite analysis completed for {image_id}")
     return CompositeAnalyzeResponse(
         face_recognition=face_response,
         image_caption=caption_response,

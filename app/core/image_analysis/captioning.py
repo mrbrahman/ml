@@ -2,9 +2,13 @@ import torch
 from PIL import Image
 from app.core.model_loader import get_blip_model
 from app.config import DEVICE
+from app.utils.logging import get_logger
+
+logger = get_logger(__name__)
 
 def generate_description(image_path):
     """Generate detailed image description"""
+    logger.debug(f"Generating description for {image_path}")
     blip_processor, blip_model = get_blip_model()
     
     if blip_processor == "FAILED" or blip_model == "FAILED":
@@ -24,7 +28,8 @@ def generate_description(image_path):
             out = blip_model.generate(**inputs, max_length=100, num_beams=5)
         
         description = blip_processor.decode(out[0], skip_special_tokens=True)
+        logger.debug(f"Generated description: {description[:50]}...")
         return description
     except Exception as e:
-        print(f"Error generating description: {e}")
+        logger.error(f"Error generating description: {e}")
         return f"Error generating image description: {e}"

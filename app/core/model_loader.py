@@ -6,6 +6,9 @@ import urllib3
 import os
 import requests
 from app.config import DEVICE, FACE_DETECTION_MODEL, IMAGE_DESCRIPTION_MODEL, CLIP_MODEL
+from app.utils.logging import get_logger
+
+logger = get_logger(__name__)
 
 # Disable SSL warnings and verification for corporate environments
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -32,7 +35,7 @@ def get_face_model():
     """Lazy load InsightFace model"""
     global _face_app
     if _face_app is None:
-        print("Loading InsightFace model...")
+        logger.info(f"Loading InsightFace model ({FACE_DETECTION_MODEL}) on {DEVICE}")
         try:
             import requests
             session = requests.Session()
@@ -48,9 +51,9 @@ def get_face_model():
             _face_app.prepare(ctx_id=0 if DEVICE == "cuda" else -1, det_size=(640, 640))
             
             requests.get = original_get
-            print("InsightFace model loaded successfully")
+            logger.info("InsightFace model loaded successfully")
         except Exception as e:
-            print(f"Failed to load InsightFace: {e}")
+            logger.error(f"Failed to load InsightFace: {e}")
             raise
     return _face_app
 
@@ -58,7 +61,7 @@ def get_blip_model():
     """Lazy load BLIP model"""
     global _blip_processor, _blip_model
     if _blip_processor is None or _blip_model is None:
-        print("Loading BLIP model...")
+        logger.info(f"Loading BLIP model ({IMAGE_DESCRIPTION_MODEL}) on {DEVICE}")
         try:
             _blip_processor = BlipProcessor.from_pretrained(
                 IMAGE_DESCRIPTION_MODEL,
@@ -72,9 +75,9 @@ def get_blip_model():
             )
             if DEVICE == "cuda":
                 _blip_model = _blip_model.to(DEVICE)
-            print("BLIP model loaded successfully")
+            logger.info("BLIP model loaded successfully")
         except Exception as e:
-            print(f"Failed to load BLIP model: {e}")
+            logger.error(f"Failed to load BLIP model: {e}")
             _blip_processor = "FAILED"
             _blip_model = "FAILED"
     return _blip_processor, _blip_model
@@ -83,7 +86,7 @@ def get_clip_model():
     """Lazy load CLIP model"""
     global _clip_processor, _clip_model
     if _clip_processor is None or _clip_model is None:
-        print("Loading CLIP model...")
+        logger.info(f"Loading CLIP model ({CLIP_MODEL}) on {DEVICE}")
         try:
             _clip_processor = CLIPProcessor.from_pretrained(
                 CLIP_MODEL,
@@ -97,9 +100,9 @@ def get_clip_model():
             )
             if DEVICE == "cuda":
                 _clip_model = _clip_model.to(DEVICE)
-            print("CLIP model loaded successfully")
+            logger.info("CLIP model loaded successfully")
         except Exception as e:
-            print(f"Failed to load CLIP model: {e}")
+            logger.error(f"Failed to load CLIP model: {e}")
             _clip_processor = "FAILED"
             _clip_model = "FAILED"
     return _clip_processor, _clip_model

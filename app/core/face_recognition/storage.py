@@ -4,6 +4,9 @@ import pickle
 import os
 from typing import Tuple, Optional, List
 from app.config import FAISS_INDEX_DIR, FACE_INDEX_FILE
+from app.utils.logging import get_logger
+
+logger = get_logger(__name__)
 
 # Global face storage state
 _face_index = None  # FAISS index storing 512-dim face embeddings for similarity search
@@ -21,8 +24,10 @@ def _load_face_index():
     if os.path.exists(face_path):
         _face_index = faiss.read_index(face_path)
         _load_face_mappings()
+        logger.info(f"Loaded existing face index with {_face_index.ntotal} faces")
     else:
         _face_index = faiss.IndexFlatIP(512)
+        logger.info("Created new face index")
 
 def _load_face_mappings():
     """Load face ID mappings and cluster info"""
@@ -117,7 +122,9 @@ def name_face_cluster(cluster_id: str, name: str):
     if cluster_id in _face_clusters:
         _face_cluster_names[cluster_id] = name
         _save_face_mappings()
+        logger.info(f"Named cluster {cluster_id} as '{name}'")
         return True
+    logger.warning(f"Cluster {cluster_id} not found for naming")
     return False
 
 def remove_face_embeddings(image_id: str):
@@ -140,7 +147,7 @@ def remove_face_embeddings(image_id: str):
                     if cluster_id in _face_cluster_names:
                         del _face_cluster_names[cluster_id]
     
-    print(f"Removed {len(indices_to_remove)} face embeddings for {image_id}")
+    logger.info(f"Removed {len(indices_to_remove)} face embeddings for {image_id}")
     _save_face_mappings()
 
 # Initialize face index on module import

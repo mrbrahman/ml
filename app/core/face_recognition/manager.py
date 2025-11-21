@@ -6,18 +6,27 @@ from .clustering import match_and_cluster_face, correct_face_assignment
 from .annotator import create_enriched_image
 from . import storage
 from app.config import MODEL_NAMES
+from app.utils.logging import get_logger
+
+logger = get_logger(__name__)
 
 def recognize(image_id: str, image_path: str, save_annotated: bool = False, known_faces: Optional[List[FaceBounds]] = None, xmp_regions: Optional[dict] = None) -> FaceRecognitionResponse:
     """Face recognition only"""
+    logger.info(f"Starting face recognition for {image_id}")
     storage.remove_face_embeddings(image_id)
     faces_data = detect_faces(image_path)
+    logger.debug(f"Detected {len(faces_data)} faces in {image_id}")
     
     if xmp_regions and not known_faces:
+        logger.debug(f"Parsing XMP regions for {image_id}")
         known_faces = parse_xmp_regions(xmp_regions, image_path)
     
     unmatched_input_faces = []
     if known_faces:
+        logger.debug(f"Matching {len(known_faces)} known faces for {image_id}")
         faces_data, unmatched_input_faces = match_known_faces(faces_data, known_faces, image_path)
+        if unmatched_input_faces:
+            logger.warning(f"Found {len(unmatched_input_faces)} unmatched input faces for {image_id}")
     
     faces_info = []
     for face_data in faces_data:
@@ -65,10 +74,12 @@ def recognize(image_id: str, image_path: str, save_annotated: bool = False, know
         ))
     
     if save_annotated and faces_info:
+        logger.info(f"Creating annotated image for {image_id}")
         create_enriched_image(image_path, faces_info, known_faces=known_faces)
     
 
     
+    logger.info(f"Face recognition completed for {image_id}: {len(faces_info)} faces processed")
     return FaceRecognitionResponse(
         image_id=image_id,
         image_path=image_path,

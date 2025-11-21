@@ -1,5 +1,6 @@
 import uvicorn
 import os
+import sys
 import torch
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,7 +11,12 @@ from app.core.image_analysis import search
 from app.core import model_loader
 from app.core.face_recognition import storage as face_storage
 from app.core.face_recognition import clustering as face_clustering
-from app.config import HOST, PORT
+from app.config import HOST, PORT, LOG_LEVEL, LOG_FILE
+from app.utils.logging import setup_logging, get_logger
+
+# Setup logging
+setup_logging(LOG_LEVEL, LOG_FILE)
+logger = get_logger(__name__)
 
 app = FastAPI(title="AI Photo Analysis Service", version="1.0.0")
 
@@ -24,32 +30,50 @@ app.add_middleware(
 
 @app.post("/analyze", response_model=CompositeAnalyzeResponse)
 async def analyze_image_endpoint(request: AnalyzeImageRequest):
+    logger.info(f"Starting image analysis for {request.image_id} at {request.image_path}")
+    
     if not os.path.exists(request.image_path):
+        logger.error(f"Image file not found: {request.image_path}")
         raise HTTPException(status_code=404, detail="Image file not found")
     
     try:
-        return analyze_image(request.image_id, request.image_path, request.known_faces, request.xmp_regions, request.save_annotated)
+        result = analyze_image(request.image_id, request.image_path, request.known_faces, request.xmp_regions, request.save_annotated)
+        logger.info(f"Image analysis completed for {request.image_id}")
+        return result
     except Exception as e:
+        logger.error(f"Analysis failed for {request.image_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 
 @app.post("/faces/recognize", response_model=FaceRecognitionResponse)
 async def recognize_faces_endpoint(request: AnalyzeImageRequest):
+    logger.info(f"Starting face recognition for {request.image_id}")
+    
     if not os.path.exists(request.image_path):
+        logger.error(f"Image file not found: {request.image_path}")
         raise HTTPException(status_code=404, detail="Image file not found")
     
     try:
-        return recognize_faces(request.image_id, request.image_path, request.save_annotated, request.known_faces, request.xmp_regions)
+        result = recognize_faces(request.image_id, request.image_path, request.save_annotated, request.known_faces, request.xmp_regions)
+        logger.info(f"Face recognition completed for {request.image_id}, found {len(result.faces)} faces")
+        return result
     except Exception as e:
+        logger.error(f"Face recognition failed for {request.image_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Face recognition failed: {str(e)}")
 
 @app.post("/images/caption", response_model=ImageCaptionResponse)
 async def caption_image_endpoint(request: ImageCaptionRequest):
+    logger.info(f"Starting image captioning for {request.image_id}")
+    
     if not os.path.exists(request.image_path):
+        logger.error(f"Image file not found: {request.image_path}")
         raise HTTPException(status_code=404, detail="Image file not found")
     
     try:
-        return caption_image(request.image_id, request.image_path)
+        result = caption_image(request.image_id, request.image_path)
+        logger.info(f"Image captioning completed for {request.image_id}")
+        return result
     except Exception as e:
+        logger.error(f"Image captioning failed for {request.image_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Image captioning failed: {str(e)}")
 
 @app.post("/images/encode", response_model=ImageEncodeResponse)
@@ -64,21 +88,27 @@ async def encode_image_endpoint(request: ImageEncodeRequest):
 
 @app.put("/faces/{cluster_id}", response_model=NameClusterResponse)
 async def name_face_cluster_endpoint(cluster_id: str, request: NameClusterRequest):
+    logger.info(f"Naming cluster {cluster_id} as '{request.name}'")
     success = face_storage.name_face_cluster(cluster_id, request.name)
     
     if success:
+        logger.info(f"Successfully named cluster {cluster_id} as '{request.name}'")
         return NameClusterResponse(success=True, message=f"Cluster {cluster_id} named as '{request.name}'")
     else:
+        logger.warning(f"Cluster {cluster_id} not found")
         return NameClusterResponse(success=False, message=f"Cluster {cluster_id} not found")
 
 
 
 @app.post("/search/text", response_model=SearchResponse)
 async def search_by_text_endpoint(request: SearchRequest):
+    logger.info(f"Text search query: '{request.query}', limit: {request.limit}")
     try:
         search_results = search_by_text(request.query, request.limit)
+        logger.info(f"Text search completed, found {len(search_results)} results")
         return SearchResponse(query=request.query, results=search_results)
     except Exception as e:
+        logger.error(f"Text search failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
 
 @app.post("/search/similar", response_model=SearchResponse)
@@ -94,6 +124,7 @@ async def search_similar_images_endpoint(request: AnalyzeImageRequest):
 
 @app.post("/faces/update-name", response_model=NameClusterResponse)
 async def update_face_cluster_name_endpoint(request: UpdatePersonNameRequest):
+    logger.info(f"Updating person name from '{request.old_name}' to '{request.new_name}'")
     updated_clusters = 0
     updated_faces = 0
     face_clusters, face_cluster_names = face_storage.get_face_clusters()
@@ -104,17 +135,21 @@ async def update_face_cluster_name_endpoint(request: UpdatePersonNameRequest):
             updated_faces += len(face_clusters.get(cluster_id, []))
     
     if updated_clusters > 0:
+        logger.info(f"Updated {updated_clusters} clusters and {updated_faces} faces from '{request.old_name}' to '{request.new_name}'")
         return NameClusterResponse(
             success=True,
             message=f"Updated '{request.old_name}' to '{request.new_name}' ({updated_clusters} clusters, {updated_faces} faces)"
         )
     else:
+        logger.warning(f"Person '{request.old_name}' not found")
         return NameClusterResponse(success=False, message=f"Person '{request.old_name}' not found")
 
 @app.post("/faces/correct", response_model=CorrectFaceAssignmentResponse)
 async def correct_face_assignment_endpoint(request: CorrectFaceAssignmentRequest):
+    logger.info(f"Correcting face assignment for {request.image_id} to '{request.person_name}'")
     try:
         success, cluster_id, action, message = face_clustering.correct_face_assignment(request.image_id, request.person_name)
+        logger.info(f"Face correction completed: {action} for {request.image_id}")
         
         return CorrectFaceAssignmentResponse(
             success=success,
@@ -123,6 +158,7 @@ async def correct_face_assignment_endpoint(request: CorrectFaceAssignmentRequest
             action_taken=action
         )
     except Exception as e:
+        logger.error(f"Face correction failed for {request.image_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Face correction failed: {str(e)}")
 
 @app.get("/faceinfo", response_model=InfoResponse)
@@ -170,4 +206,29 @@ async def health_check():
         return {"status": "error", "message": str(e)}
 
 if __name__ == "__main__":
-    uvicorn.run(app, host=HOST, port=PORT)
+    logger.info(f"Starting AI Photo Analysis Service on {HOST}:{PORT}")
+    
+    # Configure uvicorn logging to match our format
+    log_config = {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {
+            "default": {
+                "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s" if not sys.stdout.isatty() else "%(asctime)s - %(name)s - \033[32m%(levelname)s\033[0m - %(message)s",
+                "datefmt": "%H:%M:%S" if sys.stdout.isatty() else None,
+            },
+        },
+        "handlers": {
+            "default": {
+                "formatter": "default",
+                "class": "logging.StreamHandler",
+                "stream": "ext://sys.stdout",
+            },
+        },
+        "root": {
+            "level": LOG_LEVEL,
+            "handlers": ["default"],
+        },
+    }
+    
+    uvicorn.run(app, host=HOST, port=PORT, log_config=log_config)

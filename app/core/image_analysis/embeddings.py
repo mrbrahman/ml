@@ -3,9 +3,13 @@ import numpy as np
 from PIL import Image
 from app.core.model_loader import get_clip_model
 from app.config import DEVICE
+from app.utils.logging import get_logger
+
+logger = get_logger(__name__)
 
 def encode_image(image_path):
     """Get CLIP embedding for text-searchable similarity"""
+    logger.debug(f"Encoding image {image_path}")
     clip_processor, clip_model = get_clip_model()
     
     if clip_processor == "FAILED" or clip_model == "FAILED":
@@ -27,11 +31,12 @@ def encode_image(image_path):
         
         return image_features.cpu().numpy().flatten()
     except Exception as e:
-        print(f"Error generating CLIP embedding: {e}")
+        logger.error(f"Error generating CLIP embedding: {e}")
         return None
 
 def encode_text(text):
     """Get CLIP text embedding for search queries"""
+    logger.debug(f"Encoding text: {text[:50]}...")
     clip_processor, clip_model = get_clip_model()
     
     if clip_processor == "FAILED" or clip_model == "FAILED":
@@ -52,5 +57,5 @@ def encode_text(text):
         
         return text_features.cpu().numpy().flatten()
     except Exception as e:
-        print(f"Error generating text embedding: {e}")
+        logger.error(f"Error generating text embedding: {e}")
         return None

@@ -3,6 +3,9 @@ from typing import Tuple, Optional, List
 from app.config import FACE_SIMILARITY_THRESHOLD, FACE_MATCH_TOP_K, CLUSTER_SUGGESTION_THRESHOLD
 import uuid
 from . import storage
+from app.utils.logging import get_logger
+
+logger = get_logger(__name__)
 
 def create_cluster_id() -> str:
     """Create a new face cluster ID"""
@@ -29,6 +32,7 @@ def create_cluster_id() -> str:
 
 def match_and_cluster_face(image_id: str, embedding: np.ndarray) -> Tuple[str, Optional[str], Optional[str], Optional[List[str]], Optional[float], Optional[int], bool]:
     """Match face embedding against existing clusters and assign to best match or create new cluster. Returns cluster_id, person_name, reference_cluster_id, reference_image_ids, match_confidence, consensus_count, is_new_cluster"""
+    logger.debug(f"Clustering face for {image_id}")
     embedding = embedding.reshape(1, -1).astype('float32')
     
     # Multi-candidate face matching with cluster consensus
@@ -66,12 +70,14 @@ def match_and_cluster_face(image_id: str, embedding: np.ndarray) -> Tuple[str, O
             new_idx = storage.add_face_to_index(embedding)
             storage.add_face_to_cluster(best_cluster, new_idx, image_id)
             person_name = storage.get_cluster_name(best_cluster)
+            logger.debug(f"Added face from {image_id} to existing cluster {best_cluster} (consensus: {consensus_count})")
             return best_cluster, person_name, best_cluster, reference_image_ids, best_score, consensus_count, False
     
     # Create new cluster
     cluster_id = create_cluster_id()
     new_idx = storage.add_face_to_index(embedding)
     storage.create_new_cluster(cluster_id, new_idx, image_id)
+    logger.debug(f"Created new cluster {cluster_id} for face from {image_id}")
     return cluster_id, None, None, None, None, None, True
 
 def get_cluster_name_suggestions(cluster_id: Optional[str] = None, min_similarity: Optional[float] = None) -> List[dict]:
@@ -132,6 +138,7 @@ def get_cluster_name_suggestions(cluster_id: Optional[str] = None, min_similarit
 
 def correct_face_assignment(image_id: str, person_name: str) -> Tuple[bool, str, str, str]:
     """Correct face assignment by moving to best cluster for given person name"""
+    logger.info(f"Correcting face assignment for {image_id} to '{person_name}'")
     # Find the face index for this image_id
     face_idx = None
     current_cluster_id = None

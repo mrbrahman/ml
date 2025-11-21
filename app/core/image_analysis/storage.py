@@ -3,6 +3,9 @@ import numpy as np
 import pickle
 import os
 from app.config import FAISS_INDEX_DIR, VISUAL_INDEX_FILE, TEXT_INDEX_FILE
+from app.utils.logging import get_logger
+
+logger = get_logger(__name__)
 
 # Global FAISS indices (visual and text search only)
 _visual_index = None
@@ -23,15 +26,19 @@ def _load_indices():
     if os.path.exists(visual_path):
         _visual_index = faiss.read_index(visual_path)
         _load_mappings("visual")
+        logger.info(f"Loaded visual index with {_visual_index.ntotal} embeddings")
     else:
         _visual_index = faiss.IndexFlatIP(512)
+        logger.info("Created new visual index")
     
     # Load text index (512-dim for CLIP)
     if os.path.exists(text_path):
         _text_index = faiss.read_index(text_path)
         _load_mappings("text")
+        logger.info(f"Loaded text index with {_text_index.ntotal} embeddings")
     else:
         _text_index = faiss.IndexFlatIP(512)
+        logger.info("Created new text index")
 
 def _load_mappings(index_type: str):
     """Load ID mappings"""
@@ -110,7 +117,7 @@ def remove_search_embeddings(image_id: str):
     # Log removal if any embeddings were found
     total_removed = sum(removed_count.values())
     if total_removed > 0:
-        print(f"Removed search embeddings for {image_id}: {removed_count['visual']} visual, {removed_count['text']} text")
+        logger.info(f"Removed search embeddings for {image_id}: {removed_count['visual']} visual, {removed_count['text']} text")
 
 # Initialize indices on module import
 _load_indices()

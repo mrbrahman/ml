@@ -4,11 +4,16 @@ from PIL import Image
 from typing import List, Union, Optional
 from app.schemas import FaceBounds
 from app.config import LEGACY_XMP_SOFTWARE
+from app.utils.logging import get_logger
+
+logger = get_logger(__name__)
 
 def parse_xmp_regions(xmp_regions: Union[str, dict, None], image_path: str = None, image_width: int = None, image_height: int = None) -> List[FaceBounds]:
     """Parse XMP regions (string or dict) and convert to FaceBounds objects with top-left coordinates"""
     if xmp_regions is None:
         return []
+    
+    logger.debug(f"Parsing XMP regions for {image_path or 'unknown image'}")
         
     try:
         # Handle both string and dict inputs
@@ -44,6 +49,7 @@ def parse_xmp_regions(xmp_regions: Union[str, dict, None], image_path: str = Non
         # Extract face regions
         known_faces = []
         if 'RegionList' in regions_data:
+            logger.debug(f"Processing {len(regions_data['RegionList'])} XMP regions")
             for region in regions_data['RegionList']:
                 # Only process Face type regions
                 if region.get('Type') == 'Face' and 'Area' in region and 'Name' in region:
@@ -87,10 +93,11 @@ def parse_xmp_regions(xmp_regions: Union[str, dict, None], image_path: str = Non
                         )
                         known_faces.append(known_face)
         
+        logger.debug(f"Parsed {len(known_faces)} face regions from XMP")
         return known_faces
         
     except (json.JSONDecodeError, KeyError, ValueError, TypeError) as e:
-        print(f"Error parsing XMP regions: {e}")
+        logger.error(f"Error parsing XMP regions: {e}")
         return []
 
 def convert_to_pixels(known_face: FaceBounds, image_width: int, image_height: int) -> List[float]:
@@ -154,9 +161,12 @@ def match_known_faces(detected_faces: List[dict], known_faces: Optional[List[Fac
     if not known_faces or known_faces is None:
         return detected_faces, []
     
+    logger.debug(f"Matching {len(detected_faces)} detected faces with {len(known_faces)} known faces")
+    
     # Get image dimensions
     img = cv2.imread(image_path)
     if img is None:
+        logger.error(f"Could not load image for face matching: {image_path}")
         return detected_faces, known_faces
     
     image_height, image_width = img.shape[:2]
@@ -207,6 +217,7 @@ def match_known_faces(detected_faces: List[dict], known_faces: Optional[List[Fac
             face['input_face_matched'] = True
             face['input_face_match_confidence'] = best_score
             matched_input_faces.add(best_match_idx)
+            logger.debug(f"Matched detected face to '{best_match['name']}' with {match_type} score {best_score:.3f}")
         else:
             face['input_face_matched'] = False
             face['input_face_match_confidence'] = 0.0
@@ -219,4 +230,5 @@ def match_known_faces(detected_faces: List[dict], known_faces: Optional[List[Fac
         if idx not in matched_input_faces:
             unmatched_input_faces.append(xmp_face['original'])
     
+    logger.debug(f"Face matching completed: {len(matched_input_faces)} matches, {len(unmatched_input_faces)} unmatched")
     return matched_faces, unmatched_input_faces

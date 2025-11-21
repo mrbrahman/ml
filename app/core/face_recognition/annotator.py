@@ -4,9 +4,13 @@ from pathlib import Path
 from typing import List, Optional
 from app.schemas import FaceInfo, FaceBounds
 from .xmp_processor import convert_to_pixels
+from app.utils.logging import get_logger
+
+logger = get_logger(__name__)
 
 def create_enriched_image(image_path: str, faces: List[FaceInfo], output_dir: str = "data/annotated_images", known_faces: Optional[List[FaceBounds]] = None) -> str:
     """Create an enriched image with bounding boxes and face labels"""
+    logger.info(f"Creating annotated image for {len(faces)} faces")
     
     # Create output directory if it doesn't exist
     os.makedirs(output_dir, exist_ok=True)
@@ -14,6 +18,7 @@ def create_enriched_image(image_path: str, faces: List[FaceInfo], output_dir: st
     # Load the original image
     img = cv2.imread(image_path)
     if img is None:
+        logger.error(f"Could not load image for annotation: {image_path}")
         raise ValueError(f"Could not load image: {image_path}")
     
     # Get original image filename without directory structure
@@ -101,5 +106,6 @@ def create_enriched_image(image_path: str, faces: List[FaceInfo], output_dir: st
     
     # Save the enriched image
     cv2.imwrite(output_path, img)
+    logger.info(f"Annotated image saved to {output_path}")
     
     return output_path

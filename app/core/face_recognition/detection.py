@@ -1,6 +1,9 @@
 import cv2
 import numpy as np
 from app.core.model_loader import get_face_model
+from app.utils.logging import get_logger
+
+logger = get_logger(__name__)
 
 def detect_faces(image_path):
     """Detect faces with full attributes for regular use"""
@@ -43,6 +46,7 @@ def detect_faces(image_path):
         
         results.append(face_data)
     
+    logger.debug(f"Face detection completed for {image_path}: {len(results)} faces processed")
     return results
 
 

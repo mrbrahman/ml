@@ -2,6 +2,9 @@ import numpy as np
 from .storage import get_indices
 from . import embeddings
 from app.schemas import SearchResult
+from app.utils.logging import get_logger
+
+logger = get_logger(__name__)
 
 def search_visual(embedding: np.ndarray, k: int = 10):
     """Search for visually similar images"""
@@ -41,6 +44,7 @@ def search_text(embedding: np.ndarray, k: int = 10):
 
 def by_text(query: str, limit: int = 10):
     """Search for images using text query"""
+    logger.debug(f"Text search: '{query}', limit: {limit}")
     text_embedding = embeddings.encode_text(query)
     
     if text_embedding is None:
@@ -53,10 +57,12 @@ def by_text(query: str, limit: int = 10):
         for image_id, score in results
     ]
     
+    logger.debug(f"Text search found {len(search_results)} results")
     return search_results
 
 def find_similar(image_path: str, limit: int = 10):
     """Find visually similar images"""
+    logger.debug(f"Visual similarity search for {image_path}, limit: {limit}")
     clip_embedding = embeddings.encode_image(image_path)
     
     if clip_embedding is None:
@@ -69,4 +75,5 @@ def find_similar(image_path: str, limit: int = 10):
         for image_id, score in results
     ]
     
+    logger.debug(f"Visual search found {len(search_results)} results")
     return search_results

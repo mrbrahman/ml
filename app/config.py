@@ -34,5 +34,11 @@ LEGACY_XMP_SOFTWARE = ["Picasa"]  # Software that uses sensor-relative coordinat
 HOST = "0.0.0.0"
 PORT = 8000
 
-# Ensure FAISS directory exists
+# Logging Configuration
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+LOG_FILE = os.getenv("LOG_FILE")  # None by default for console-only logging
+
+# Ensure directories exist
 os.makedirs(FAISS_INDEX_DIR, exist_ok=True)
+if LOG_FILE:
+    os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
