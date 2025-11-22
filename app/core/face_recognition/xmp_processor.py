@@ -16,28 +16,19 @@ def parse_xmp_regions(xmp_regions: Union[str, dict, None], orientation: int, ima
     logger.debug(f"Parsing XMP regions for {image_path or 'unknown image'}")
         
     try:
-        # Handle both string and dict inputs
-        if isinstance(xmp_regions, str):
-            # Handle HTML-encoded quotes
-            xmp_regions = xmp_regions.replace('&quot;', '"')
-            regions_data = json.loads(xmp_regions)
-        else:
-            regions_data = xmp_regions
-        
         # Get dimensions from XMP if not provided
         if image_width is None or image_height is None:
-            if 'AppliedToDimensions' in regions_data:
-                dims = regions_data['AppliedToDimensions']
+            if 'AppliedToDimensions' in xmp_regions:
+                dims = xmp_regions['AppliedToDimensions']
                 image_width = dims.get('W', image_width)
                 image_height = dims.get('H', image_height)
         
 
-        
         # Extract face regions
         known_faces = []
-        if 'RegionList' in regions_data:
-            logger.debug(f"Processing {len(regions_data['RegionList'])} XMP regions")
-            for region in regions_data['RegionList']:
+        if 'RegionList' in xmp_regions:
+            logger.debug(f"Processing {len(xmp_regions['RegionList'])} XMP regions")
+            for region in xmp_regions['RegionList']:
                 # Only process Face type regions
                 if region.get('Type') == 'Face' and 'Area' in region and 'Name' in region:
                     area = region['Area']
