@@ -10,7 +10,7 @@ from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
-def recognize(image_id: str, image_path: str, save_annotated: bool = False, known_faces: Optional[List[FaceBounds]] = None, xmp_regions: Optional[dict] = None) -> FaceRecognitionResponse:
+def recognize(image_id: str, image_path: str, orientation: int, save_annotated: bool = False, known_faces: Optional[List[FaceBounds]] = None, xmp_regions: Optional[dict] = None) -> FaceRecognitionResponse:
     """Face recognition only"""
     logger.info(f"Starting face recognition for {image_id}")
     storage.remove_face_embeddings(image_id)
@@ -19,7 +19,7 @@ def recognize(image_id: str, image_path: str, save_annotated: bool = False, know
     
     if xmp_regions and not known_faces:
         logger.debug(f"Parsing XMP regions for {image_id}")
-        known_faces = parse_xmp_regions(xmp_regions, image_path)
+        known_faces = parse_xmp_regions(xmp_regions, orientation, image_path)
     
     unmatched_input_faces = []
     if known_faces:

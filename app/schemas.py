@@ -11,6 +11,7 @@ class FaceBounds(BaseModel):
 class AnalyzeImageRequest(BaseModel):
     image_id: str
     image_path: str
+    orientation: int  # EXIF orientation value (1-8)
     save_annotated: Optional[bool] = False
     known_faces: Optional[List[FaceBounds]] = None
     xmp_regions: Optional[dict] = None  # Raw XMP regions object from exiftool
