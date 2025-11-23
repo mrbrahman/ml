@@ -11,6 +11,7 @@ from app.core.image_analysis import search
 from app.core import model_loader
 from app.core.face_recognition import storage as face_storage
 from app.core.face_recognition import clustering as face_clustering
+from app.core.face_recognition.annotator import create_enriched_image
 from app.config import HOST, PORT, LOG_LEVEL, LOG_FILE
 from app.utils.logging import setup_logging, get_logger
 
@@ -172,6 +173,26 @@ async def get_cluster_name_suggestions(cluster_id: str = None, min_similarity: f
         return {"suggestions": suggestions}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get suggestions: {str(e)}")
+
+@app.post("/images/annotate", response_model=AnnotateImageResponse)
+async def annotate_image_endpoint(request: AnnotateImageRequest):
+    if not os.path.exists(request.image_path):
+        raise HTTPException(status_code=404, detail="Image file not found")
+    
+    try:
+        annotated_path = create_enriched_image(
+            request.image_path, 
+            request.faces, 
+            request.output_dir, 
+            request.unmatched_input_faces
+        )
+        return AnnotateImageResponse(
+            success=True,
+            annotated_image_path=annotated_path,
+            message=f"Annotated image saved to {annotated_path}"
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Annotation failed: {str(e)}")
 
 @app.get("/health")
 async def health_check():

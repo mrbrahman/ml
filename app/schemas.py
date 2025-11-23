@@ -29,6 +29,7 @@ class InputFaceMatch(BaseModel):
     confidence: Optional[float] = None  # IoU confidence for geometric match
     match_strategy: Optional[str] = None  # 'containment', 'shrinkage_containment', 'shrinkage_iou', 'none'
     shrunk_bbox: Optional[List[float]] = None  # Pixel coordinates of shrunk bbox when strategy is shrinkage
+    input_bbox: Optional[List[float]] = None  # Pixel coordinates of original XMP region [x1, y1, x2, y2]
 
 class FaceInfo(BaseModel):
     bbox: List[float]  # [x, y, w, h]
@@ -118,3 +119,14 @@ class CompositeAnalyzeResponse(BaseModel):
     face_recognition: FaceRecognitionResponse
     image_caption: ImageCaptionResponse
     image_encode: ImageEncodeResponse
+
+class AnnotateImageRequest(BaseModel):
+    image_path: str
+    faces: List[FaceInfo]
+    unmatched_input_faces: Optional[List[FaceBounds]] = None
+    output_dir: Optional[str] = "data/annotated_images"
+
+class AnnotateImageResponse(BaseModel):
+    success: bool
+    annotated_image_path: str
+    message: str

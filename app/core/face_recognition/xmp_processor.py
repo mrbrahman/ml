@@ -216,6 +216,7 @@ def match_known_faces(detected_faces: List[dict], known_faces: Optional[List[Fac
             face['input_face_matched'] = True
             face['input_face_match_confidence'] = score
             face['match_strategy'] = 'containment'
+            face['input_bbox'] = known_face['bbox']
             matched_input_faces.add(idx)
         else:
             # Multiple matches - apply shrinkage and recheck
@@ -242,6 +243,7 @@ def match_known_faces(detected_faces: List[dict], known_faces: Optional[List[Fac
                 face['input_face_match_confidence'] = score
                 face['match_strategy'] = f'shrinkage_{match_method}'
                 face['shrunk_bbox'] = shrunken_bbox
+                face['input_bbox'] = known_face['bbox']
                 matched_input_faces.add(idx)
             else:
                 # Still multiple matches - mark for manual resolution
@@ -253,6 +255,7 @@ def match_known_faces(detected_faces: List[dict], known_faces: Optional[List[Fac
             face['input_face_matched'] = False
             face['input_face_match_confidence'] = 0.0
             face['match_strategy'] = 'none'
+            face['input_bbox'] = None
     
     logger.debug(f"Face matching completed: {len(matched_input_faces)} matches, {len(unmatched_input_faces)} unmatched")
     return detected_faces, unmatched_input_faces

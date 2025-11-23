@@ -29,6 +29,7 @@ def create_enriched_image(image_path: str, faces: List[FaceInfo], output_dir: st
     image_height, image_width = img.shape[:2]
     
     # Draw known (input) faces first (in blue, semi-transparent)
+    # First draw from unmatched_input_faces
     if known_faces and known_faces is not None:
         for known_face in known_faces:
             # Convert coordinates to pixels
@@ -42,6 +43,35 @@ def create_enriched_image(image_path: str, faces: List[FaceInfo], output_dir: st
             
             # Prepare label
             label = f"INP: {known_face.name}"
+            
+            # Calculate text size
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            font_scale = 0.5
+            thickness = 1
+            (text_width, text_height), _ = cv2.getTextSize(label, font, font_scale, thickness)
+            
+            # Draw label background in blue
+            cv2.rectangle(overlay, (x1, y1 - text_height - 5), (x1 + text_width, y1), (255, 0, 0), -1)
+            
+            # Apply transparency (0.6)
+            cv2.addWeighted(overlay, 0.6, img, 0.4, 0, img)
+            
+            # Draw text
+            cv2.putText(img, label, (x1, y1 - 3), font, font_scale, (255, 255, 255), thickness)
+    
+    # Draw matched input faces from face.input_face_match.input_bbox
+    for face in faces:
+        if face.input_face_match and face.input_face_match.matched and face.input_face_match.input_bbox:
+            x1, y1, x2, y2 = [int(coord) for coord in face.input_face_match.input_bbox]
+            
+            # Create overlay for transparency
+            overlay = img.copy()
+            
+            # Draw input face bounding box in blue
+            cv2.rectangle(overlay, (x1, y1), (x2, y2), (255, 0, 0), 2)
+            
+            # Prepare label
+            label = f"INP: {face.input_face_match.name}"
             
             # Calculate text size
             font = cv2.FONT_HERSHEY_SIMPLEX

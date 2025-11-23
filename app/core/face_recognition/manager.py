@@ -71,7 +71,8 @@ def recognize(image_id: str, image_path: str, orientation: int, save_annotated: 
                 name=input_name,
                 confidence=face_data.get('input_face_match_confidence'),
                 match_strategy=face_data.get('match_strategy'),
-                shrunk_bbox=face_data.get('shrunk_bbox')
+                shrunk_bbox=face_data.get('shrunk_bbox'),
+                input_bbox=face_data.get('input_bbox')
             ),
             name_mismatch=name_mismatch
         ))
