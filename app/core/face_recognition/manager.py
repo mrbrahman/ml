@@ -69,7 +69,9 @@ def recognize(image_id: str, image_path: str, orientation: int, save_annotated: 
             input_face_match=InputFaceMatch(
                 matched=face_data.get('input_face_matched'),
                 name=input_name,
-                confidence=face_data.get('input_face_match_confidence')
+                confidence=face_data.get('input_face_match_confidence'),
+                match_strategy=face_data.get('match_strategy'),
+                shrunk_bbox=face_data.get('shrunk_bbox')
             ),
             name_mismatch=name_mismatch
         ))

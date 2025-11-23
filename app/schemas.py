@@ -27,6 +27,8 @@ class InputFaceMatch(BaseModel):
     matched: Optional[bool] = None
     name: Optional[str] = None
     confidence: Optional[float] = None  # IoU confidence for geometric match
+    match_strategy: Optional[str] = None  # 'containment', 'shrinkage_containment', 'shrinkage_iou', 'none'
+    shrunk_bbox: Optional[List[float]] = None  # Pixel coordinates of shrunk bbox when strategy is shrinkage
 
 class FaceInfo(BaseModel):
     bbox: List[float]  # [x, y, w, h]
