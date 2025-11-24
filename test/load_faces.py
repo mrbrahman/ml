@@ -1,0 +1,99 @@
+import json
+import sqlite3
+import sys
+
+conn = sqlite3.connect('faces.db')
+cursor = conn.cursor()
+
+cursor.execute('''CREATE TABLE IF NOT EXISTS faces (
+    id INTEGER PRIMARY KEY,
+    image_id TEXT,
+    image_path TEXT,
+    person_name TEXT,
+    gender TEXT,
+    age INTEGER,
+    confidence REAL,
+    bbox_x1 REAL,
+    bbox_y1 REAL,
+    bbox_x2 REAL,
+    bbox_y2 REAL,
+    name_mismatch TEXT,
+    left_eye_x REAL,
+    left_eye_y REAL,
+    right_eye_x REAL,
+    right_eye_y REAL,
+    nose_x REAL,
+    nose_y REAL,
+    left_mouth_x REAL,
+    left_mouth_y REAL,
+    right_mouth_x REAL,
+    right_mouth_y REAL,
+    pitch REAL,
+    yaw REAL,
+    roll REAL,
+    cluster_id TEXT,
+    cluster_name TEXT,
+    cluster_confidence REAL,
+    cluster_consensus_count INTEGER,
+    cluster_reference_image_ids TEXT,
+    cluster_is_new_cluster BOOLEAN,
+    input_face_match_matched BOOLEAN,
+    input_face_match_name TEXT,
+    input_face_match_confidence REAL,
+    input_face_match_strategy TEXT,
+    input_face_shrunk_bbox TEXT
+)''')
+
+cursor.execute('''CREATE TABLE IF NOT EXISTS unmatched_input_faces (
+    id INTEGER PRIMARY KEY,
+    image_id TEXT,
+    image_path TEXT,
+    name TEXT,
+    x REAL,
+    y REAL,
+    w REAL,
+    h REAL
+)''')
+
+face_id = 1
+unmatched_id = 1
+for filename in sys.argv[1:]:
+    # print(f"Processing {filename}...")
+    with open(filename, 'r') as f:
+        data = json.load(f)
+    
+    for face in data['faces']:
+        lm = face['landmarks']
+        pose = face['pose']
+        cluster = face['cluster']
+        match = face['input_face_match']
+        ref_ids = cluster.get('reference_image_ids')
+        
+        shrunk_bbox = match.get('shrunk_bbox')
+        cursor.execute('''INSERT INTO faces VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', (
+            face_id, data['image_id'], data['image_path'], face.get('person_name'),
+            face.get('gender'), face.get('age'), face.get('confidence'),
+            face['bbox'][0], face['bbox'][1], face['bbox'][2], face['bbox'][3],
+            face.get('name_mismatch'),
+            lm['left_eye'][0], lm['left_eye'][1], lm['right_eye'][0], lm['right_eye'][1],
+            lm['nose'][0], lm['nose'][1], lm['left_mouth'][0], lm['left_mouth'][1],
+            lm['right_mouth'][0], lm['right_mouth'][1],
+            pose['pitch'], pose['yaw'], pose['roll'],
+            cluster['cluster_id'], cluster.get('name'), cluster.get('confidence'),
+            cluster.get('consensus_count'), str(ref_ids) if ref_ids else None, cluster['is_new_cluster'],
+            match['matched'], match.get('name'), match['confidence'],
+            match.get('match_strategy'), str(shrunk_bbox) if shrunk_bbox else None
+        ))
+        face_id += 1
+    
+    for unmatched_face in data.get('unmatched_input_faces', []):
+        cursor.execute('''INSERT INTO unmatched_input_faces VALUES (?, ?, ?, ?, ?, ?, ?, ?)''', (
+            unmatched_id, data['image_id'], data['image_path'], 
+            unmatched_face['name'], unmatched_face['x'], unmatched_face['y'], 
+            unmatched_face['w'], unmatched_face['h']
+        ))
+        unmatched_id += 1
+
+conn.commit()
+conn.close()
+print("Data loaded successfully into faces.db")
