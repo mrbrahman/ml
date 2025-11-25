@@ -62,12 +62,16 @@ def parse_xmp_regions(xmp_regions: Union[str, dict, None], orientation: int, ima
                             elif orientation == 8:  # 90° counter-clockwise
                                 x, y, w, h = y, 1 - x - w, h, w
                         
+                        centroid_x = x + w / 2
+                        centroid_y = y + h / 2
+                        
                         known_face = FaceBounds(
                             name=region['Name'],
                             x=x,
                             y=y,
                             w=w,
-                            h=h
+                            h=h,
+                            centroid=[centroid_x, centroid_y]
                         )
                         known_faces.append(known_face)
         
@@ -154,18 +158,17 @@ def apply_picasa_shrinkage(bbox: List[float]) -> List[float]:
     
     return [new_x1, new_y1, new_x2, new_y2]
 
-def match_known_faces(detected_faces: List[dict], known_faces: Optional[List[FaceBounds]], image_path: str, containment_threshold: float = 0.7, iou_threshold: float = 0.08) -> tuple[List[dict], List[FaceBounds]]:
-    """Match detected faces with XMP face regions and assign names
+def calculate_centroid_distance(centroid1: List[float], centroid2: List[float]) -> float:
+    """Calculate Euclidean distance between two centroids"""
+    return ((centroid1[0] - centroid2[0]) ** 2 + (centroid1[1] - centroid2[1]) ** 2) ** 0.5
+
+def match_known_faces(detected_faces: List[dict], known_faces: Optional[List[FaceBounds]], image_path: str) -> tuple[List[dict], List[FaceBounds]]:
+    """Match detected faces with XMP face regions using centroid-based least distance matching
     
-    Current Strategy (optimized for Picasa XMP regions):
-    1. Loop through each known face from XMP
-    2. Find detected faces contained within known face bbox
-    3. If 1 match: assign name directly
-    4. If >1 matches: apply Picasa shrinkage and recheck
-    5. Use containment first, fallback to IoU after shrinkage
-    
-    Note: This assumes XMP regions are larger than detected faces (Picasa style).
-    TODO: For tighter XMP bboxes, initial strategy should use IoU instead of containment.
+    Strategy:
+    1. Calculate centroids for all detected faces
+    2. For each known face, find the detected face with the closest centroid
+    3. Assign names based on minimum distance matches
     
     Returns:
         tuple: (matched_faces, unmatched_input_faces)
@@ -175,7 +178,7 @@ def match_known_faces(detected_faces: List[dict], known_faces: Optional[List[Fac
     
     logger.debug(f"Matching {len(detected_faces)} detected faces with {len(known_faces)} known faces")
     
-    # Get image dimensions
+    # Get image dimensions for normalization
     img = cv2.imread(image_path)
     if img is None:
         logger.error(f"Could not load image for face matching: {image_path}")
@@ -183,71 +186,52 @@ def match_known_faces(detected_faces: List[dict], known_faces: Optional[List[Fac
     
     image_height, image_width = img.shape[:2]
     
-    # Convert known faces to pixel coordinates
-    xmp_pixel_faces = []
-    for known_face in known_faces:
-        pixel_coords = convert_to_pixels(known_face, image_width, image_height)
-        xmp_pixel_faces.append({
-            'name': known_face.name,
-            'bbox': pixel_coords,
-            'original': known_face
-        })
+    # Calculate normalized centroids for detected faces
+    for face in detected_faces:
+        bbox = face['bbox']  # [x1, y1, x2, y2] in pixels from InsightFace
+        center_x = (bbox[0] + bbox[2]) / 2
+        center_y = (bbox[1] + bbox[3]) / 2
+        centroid_x = center_x / image_width
+        centroid_y = center_y / image_height
+        face['centroid'] = [centroid_x, centroid_y]
     
-    # Track which input faces were matched
+    # Track matches
     matched_input_faces = set()
     unmatched_input_faces = []
+    used_detected_faces = set()
     
-    # Loop through known faces and find matches
-    for idx, known_face in enumerate(xmp_pixel_faces):
-        # Find all detected faces contained in this known face
-        contained_faces = []
-        for face in detected_faces:
-            containment = calculate_containment(face['bbox'], known_face['bbox'])
-            if containment >= containment_threshold:
-                contained_faces.append((face, containment))
+    # For each known face, find closest detected face by centroid distance
+    for idx, known_face in enumerate(known_faces):
+        if not known_face.centroid:
+            unmatched_input_faces.append(known_face)
+            continue
+            
+        best_match = None
+        best_distance = float('inf')
+        best_face_idx = None
         
-        if len(contained_faces) == 0:
-            # No faces found - mark as unmatched
-            unmatched_input_faces.append(known_face['original'])
-        elif len(contained_faces) == 1:
-            # Single match - assign name
-            face, score = contained_faces[0]
-            face['person_name'] = known_face['name']
-            face['input_face_matched'] = True
-            face['input_face_match_confidence'] = score
-            face['match_strategy'] = 'containment'
-            face['input_bbox'] = known_face['bbox']
+        for face_idx, face in enumerate(detected_faces):
+            if face_idx in used_detected_faces:
+                continue
+                
+            distance = calculate_centroid_distance(known_face.centroid, face['centroid'])
+            if distance < best_distance:
+                best_distance = distance
+                best_match = face
+                best_face_idx = face_idx
+        
+        if best_match and best_distance < 0.1:  # Reasonable distance threshold
+            # Assign name to best match
+            best_match['person_name'] = known_face.name
+            best_match['input_face_matched'] = True
+            best_match['input_face_match_confidence'] = 1.0 - best_distance  # Convert distance to confidence
+            best_match['match_strategy'] = 'centroid_distance'
+            best_match['input_bbox'] = convert_to_pixels(known_face, image_width, image_height)
+            best_match['input_centroid'] = known_face.centroid  # Store original XMP centroid
             matched_input_faces.add(idx)
+            used_detected_faces.add(best_face_idx)
         else:
-            # Multiple matches - apply shrinkage and recheck
-            shrunken_bbox = apply_picasa_shrinkage(known_face['bbox'])
-            
-            contained_after_shrink = []
-            for face, _ in contained_faces:
-                containment = calculate_containment(face['bbox'], shrunken_bbox)
-                if containment >= containment_threshold:
-                    contained_after_shrink.append((face, containment, 'containment'))
-                else:
-                    # Also check IoU as fallback
-                    iou = calculate_iou(face['bbox'], shrunken_bbox)
-                    if iou >= iou_threshold:
-                        contained_after_shrink.append((face, iou, 'iou'))
-            
-            if len(contained_after_shrink) == 1:
-                # Single match after shrinkage
-                match_data = contained_after_shrink[0]
-                face, score = match_data[0], match_data[1]
-                match_method = match_data[2] if len(match_data) > 2 else 'containment'
-                face['person_name'] = known_face['name']
-                face['input_face_matched'] = True
-                face['input_face_match_confidence'] = score
-                face['match_strategy'] = f'shrinkage_{match_method}'
-                face['shrunk_bbox'] = shrunken_bbox
-                face['input_bbox'] = known_face['bbox']
-                matched_input_faces.add(idx)
-            else:
-                # Still multiple matches - mark for manual resolution
-                logger.warning(f"Face '{known_face['name']}' needs manual resolution: {len(contained_after_shrink)} matches after shrinkage")
+            unmatched_input_faces.append(known_face)
     
     # Set default values for unmatched detected faces
     for face in detected_faces:

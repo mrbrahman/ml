@@ -7,6 +7,7 @@ class FaceBounds(BaseModel):
     y: float
     w: float
     h: float
+    centroid: Optional[List[float]] = None  # [x, y] normalized centroid
 
 class AnalyzeImageRequest(BaseModel):
     image_id: str
@@ -22,14 +23,15 @@ class ClusterMatch(BaseModel):
     consensus_count: Optional[int] = None  # How many faces agreed on match
     reference_image_ids: Optional[List[str]] = None  # Image IDs of matched faces
     is_new_cluster: bool = False
+    centroid: Optional[List[float]] = None  # [x, y] normalized centroid
 
 class InputFaceMatch(BaseModel):
     matched: Optional[bool] = None
     name: Optional[str] = None
-    confidence: Optional[float] = None  # IoU confidence for geometric match
-    match_strategy: Optional[str] = None  # 'containment', 'shrinkage_containment', 'shrinkage_iou', 'none'
-    shrunk_bbox: Optional[List[float]] = None  # Pixel coordinates of shrunk bbox when strategy is shrinkage
+    confidence: Optional[float] = None  # Distance-based confidence for centroid match
+    match_strategy: Optional[str] = None  # 'centroid_distance'
     input_bbox: Optional[List[float]] = None  # Pixel coordinates of original XMP region [x1, y1, x2, y2]
+    centroid: Optional[List[float]] = None  # [x, y] normalized centroid
 
 class FaceInfo(BaseModel):
     bbox: List[float]  # [x, y, w, h]

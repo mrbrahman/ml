@@ -1,4 +1,5 @@
 import json
+import os
 import sqlite3
 import sys
 
@@ -6,7 +7,6 @@ conn = sqlite3.connect('faces.db')
 cursor = conn.cursor()
 
 cursor.execute('''CREATE TABLE IF NOT EXISTS faces (
-    id INTEGER PRIMARY KEY,
     image_id TEXT,
     image_path TEXT,
     person_name TEXT,
@@ -41,24 +41,31 @@ cursor.execute('''CREATE TABLE IF NOT EXISTS faces (
     input_face_match_name TEXT,
     input_face_match_confidence REAL,
     input_face_match_strategy TEXT,
-    input_face_shrunk_bbox TEXT
+    input_face_match_input_bbox TEXT,
+    cluster_centroid_x REAL,
+    cluster_centroid_y REAL,
+    input_face_match_centroid_x REAL,
+    input_face_match_centroid_y REAL,
+    create_time TEXT
 )''')
 
 cursor.execute('''CREATE TABLE IF NOT EXISTS unmatched_input_faces (
-    id INTEGER PRIMARY KEY,
     image_id TEXT,
     image_path TEXT,
     name TEXT,
     x REAL,
     y REAL,
     w REAL,
-    h REAL
+    h REAL,
+    centroid_x REAL,
+    centroid_y REAL,
+    create_time TEXT
 )''')
 
-face_id = 1
-unmatched_id = 1
+
 for filename in sys.argv[1:]:
     # print(f"Processing {filename}...")
+    file_mtime = os.path.getmtime(filename)
     with open(filename, 'r') as f:
         data = json.load(f)
     
@@ -69,9 +76,11 @@ for filename in sys.argv[1:]:
         match = face['input_face_match']
         ref_ids = cluster.get('reference_image_ids')
         
-        shrunk_bbox = match.get('shrunk_bbox')
-        cursor.execute('''INSERT INTO faces VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', (
-            face_id, data['image_id'], data['image_path'], face.get('person_name'),
+        input_bbox = match.get('input_bbox')
+        cluster_centroid = cluster.get('centroid')
+        match_centroid = match.get('centroid')
+        cursor.execute('''INSERT INTO faces VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime(?, 'unixepoch'))''', (
+            data['image_id'], data['image_path'], face.get('person_name'),
             face.get('gender'), face.get('age'), face.get('confidence'),
             face['bbox'][0], face['bbox'][1], face['bbox'][2], face['bbox'][3],
             face.get('name_mismatch'),
@@ -82,17 +91,23 @@ for filename in sys.argv[1:]:
             cluster['cluster_id'], cluster.get('name'), cluster.get('confidence'),
             cluster.get('consensus_count'), str(ref_ids) if ref_ids else None, cluster['is_new_cluster'],
             match['matched'], match.get('name'), match['confidence'],
-            match.get('match_strategy'), str(shrunk_bbox) if shrunk_bbox else None
+            match.get('match_strategy'), str(input_bbox) if input_bbox else None,
+            cluster_centroid[0] if cluster_centroid else None, cluster_centroid[1] if cluster_centroid else None,
+            match_centroid[0] if match_centroid else None, match_centroid[1] if match_centroid else None,
+            file_mtime
         ))
-        face_id += 1
+
     
     for unmatched_face in data.get('unmatched_input_faces', []):
-        cursor.execute('''INSERT INTO unmatched_input_faces VALUES (?, ?, ?, ?, ?, ?, ?, ?)''', (
-            unmatched_id, data['image_id'], data['image_path'], 
+        centroid = unmatched_face.get('centroid')
+        cursor.execute('''INSERT INTO unmatched_input_faces VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime(?, 'unixepoch'))''', (
+            data['image_id'], data['image_path'], 
             unmatched_face['name'], unmatched_face['x'], unmatched_face['y'], 
-            unmatched_face['w'], unmatched_face['h']
+            unmatched_face['w'], unmatched_face['h'],
+            centroid[0] if centroid else None, centroid[1] if centroid else None,
+            file_mtime
         ))
-        unmatched_id += 1
+
 
 conn.commit()
 conn.close()

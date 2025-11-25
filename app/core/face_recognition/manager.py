@@ -64,15 +64,16 @@ def recognize(image_id: str, image_path: str, orientation: int, save_annotated: 
                 confidence=match_confidence,
                 consensus_count=consensus_count,
                 reference_image_ids=reference_image_ids,
-                is_new_cluster=is_new_cluster
+                is_new_cluster=is_new_cluster,
+                centroid=face_data.get('centroid')
             ),
             input_face_match=InputFaceMatch(
                 matched=face_data.get('input_face_matched'),
                 name=input_name,
                 confidence=face_data.get('input_face_match_confidence'),
                 match_strategy=face_data.get('match_strategy'),
-                shrunk_bbox=face_data.get('shrunk_bbox'),
-                input_bbox=face_data.get('input_bbox')
+                input_bbox=face_data.get('input_bbox'),
+                centroid=face_data.get('input_centroid')  # Use original XMP centroid
             ),
             name_mismatch=name_mismatch
         ))

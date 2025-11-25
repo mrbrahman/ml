@@ -41,6 +41,12 @@ def create_enriched_image(image_path: str, faces: List[FaceInfo], output_dir: st
             # Draw known face bounding box in blue
             cv2.rectangle(overlay, (x1, y1), (x2, y2), (255, 0, 0), 2)
             
+            # Draw known face centroid in blue
+            if known_face.centroid:
+                centroid_x = int(known_face.centroid[0] * image_width)
+                centroid_y = int(known_face.centroid[1] * image_height)
+                cv2.circle(overlay, (centroid_x, centroid_y), 8, (255, 0, 0), 2)
+            
             # Prepare label
             label = f"INP: {known_face.name}"
             
@@ -70,6 +76,12 @@ def create_enriched_image(image_path: str, faces: List[FaceInfo], output_dir: st
             # Draw input face bounding box in blue
             cv2.rectangle(overlay, (x1, y1), (x2, y2), (255, 0, 0), 2)
             
+            # Draw input face centroid in blue
+            if face.input_face_match.centroid:
+                centroid_x = int(face.input_face_match.centroid[0] * image_width)
+                centroid_y = int(face.input_face_match.centroid[1] * image_height)
+                cv2.circle(overlay, (centroid_x, centroid_y), 8, (255, 0, 0), 2)
+            
             # Prepare label
             label = f"INP: {face.input_face_match.name}"
             
@@ -97,6 +109,12 @@ def create_enriched_image(image_path: str, faces: List[FaceInfo], output_dir: st
         
         # Draw InsightFace bounding box in green
         cv2.rectangle(overlay, (x1, y1), (x2, y2), (0, 255, 0), 2)
+        
+        # Draw detected face centroid in green
+        if face.cluster and face.cluster.centroid:
+            centroid_x = int(face.cluster.centroid[0] * image_width)
+            centroid_y = int(face.cluster.centroid[1] * image_height)
+            cv2.circle(overlay, (centroid_x, centroid_y), 5, (0, 255, 0), 2)
         
         # Prepare label text
         if face.person_name:

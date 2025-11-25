@@ -94,12 +94,16 @@ Face recognition only - detect and identify faces without image description.
         "confidence": 0.85,
         "consensus_count": 3,
         "reference_image_ids": ["img1", "img2"],
-        "is_new_cluster": false
+        "is_new_cluster": false,
+        "centroid": [0.5, 0.4]
       },
-      "xmp": {
+      "input_face_match": {
         "matched": true,
         "name": "John Doe",
-        "confidence": 0.87
+        "confidence": 0.87,
+        "match_strategy": "centroid_distance",
+        "input_bbox": [100, 80, 200, 180],
+        "centroid": [0.5, 0.4]
       },
       "name_mismatch": false
     }
@@ -110,7 +114,8 @@ Face recognition only - detect and identify faces without image description.
       "x": 0.25,
       "y": 0.35,
       "w": 0.10,
-      "h": 0.15
+      "h": 0.15,
+      "centroid": [0.3, 0.425]
     }
   ],
   "models_used": {
@@ -331,12 +336,16 @@ Analyze an image for faces and generate description. This endpoint combines the 
           "confidence": 0.85,
           "consensus_count": 3,
           "reference_image_ids": ["img1", "img2"],
-          "is_new_cluster": false
+          "is_new_cluster": false,
+          "centroid": [0.5, 0.4]
         },
-        "xmp": {
+        "input_face_match": {
           "matched": true,
           "name": "John Doe",
-          "confidence": 0.87
+          "confidence": 0.87,
+          "match_strategy": "centroid_distance",
+          "input_bbox": [100, 80, 200, 180],
+          "centroid": [0.5, 0.4]
         },
         "name_mismatch": true
       }
@@ -347,7 +356,8 @@ Analyze an image for faces and generate description. This endpoint combines the 
         "x": 0.25,
         "y": 0.35,
         "w": 0.10,
-        "h": 0.15
+        "h": 0.15,
+        "centroid": [0.3, 0.425]
       }
     ],
     "models_used": {
@@ -545,10 +555,14 @@ The face recognition response uses a grouped structure for better organization:
   - `consensus_count`: Number of faces that agreed on this cluster
   - `reference_image_ids`: Image IDs of faces used for matching
   - `is_new_cluster`: True if this face created a new cluster
-- **XMP Metadata**: `xmp` object containing:
+  - `centroid`: Normalized centroid coordinates [x, y]
+- **Input Face Match**: `input_face_match` object containing:
   - `matched`: True if face matched XMP region data
   - `name`: Name from XMP metadata (may be null)
-  - `confidence`: IoU confidence for geometric matching
+  - `confidence`: Distance-based confidence for centroid matching
+  - `match_strategy`: Matching method used ("centroid_distance")
+  - `input_bbox`: Original XMP region coordinates in pixels
+  - `centroid`: Normalized centroid coordinates [x, y]
 - **Name Validation**: `name_mismatch` boolean indicating if cluster name differs from XMP name
 
 ### Unmatched Input Faces
@@ -558,7 +572,15 @@ The `unmatched_input_faces` array contains faces from the input (`xmp_regions`) 
 - Incorrectly tagged face regions in metadata
 - Faces that require manual review or re-tagging
 
-Each unmatched face includes the original normalized coordinates and name from the input.
+Each unmatched face includes the original normalized coordinates, centroid, and name from the input.
+
+### Centroid-Based Matching
+
+The system uses centroid-based least distance matching for XMP face regions:
+- **Centroid Calculation**: Each face (detected and XMP) has a normalized centroid [x, y]
+- **Distance Matching**: For each XMP face, finds the closest detected face by Euclidean distance
+- **Confidence**: Distance is converted to confidence (1.0 - distance)
+- **Threshold**: Maximum distance of 0.1 (normalized coordinates) for valid matches
 
 ### Name Mismatch Detection
 
