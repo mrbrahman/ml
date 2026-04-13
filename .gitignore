@@ -41,5 +41,5 @@ venv/
 
 *dev-chat*.md
 data/
-test/*.json
+test
 

@@ -12,7 +12,7 @@ from app.core import model_loader
 from app.core.face_recognition import storage as face_storage
 from app.core.face_recognition import clustering as face_clustering
 from app.core.face_recognition.annotator import create_enriched_image
-from app.config import HOST, PORT, LOG_LEVEL, LOG_FILE
+from app.config import HOST, PORT, LOG_LEVEL, LOG_FILE, DEVICE
 from app.utils.logging import setup_logging, get_logger
 
 # Setup logging
@@ -198,7 +198,6 @@ async def annotate_image_endpoint(request: AnnotateImageRequest):
 async def health_check():
     try:
         cuda_available = torch.cuda.is_available()
-        device_info = "cuda" if cuda_available else "cpu"
         
         gpu_info = {}
         if cuda_available:
@@ -217,7 +216,8 @@ async def health_check():
         
         return {
             "status": "healthy", 
-            "device": device_info,
+            "device": DEVICE,
+            "device_mode": os.getenv("DEVICE_MODE", "auto").lower(),
             "cuda_available": cuda_available,
             "gpu_info": gpu_info,
             "pytorch_version": torch.__version__,

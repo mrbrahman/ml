@@ -2,8 +2,15 @@ import os
 import torch
 
 # GPU Configuration
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-USE_GPU = torch.cuda.is_available()
+_device_mode = os.getenv("DEVICE_MODE", "auto").lower()
+if _device_mode == "cpu":
+    DEVICE = "cpu"
+elif _device_mode == "cuda":
+    DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+elif _device_mode == "auto":
+    DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+else:
+    raise ValueError(f"Invalid DEVICE_MODE '{_device_mode}'. Supported values: auto, cuda, cpu")
 
 # Model Configuration
 FACE_DETECTION_MODEL = "buffalo_l"  # InsightFace model

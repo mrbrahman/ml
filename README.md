@@ -430,6 +430,7 @@ Health check endpoint with detailed system information.
 {
   "status": "healthy",
   "device": "cuda",
+  "device_mode": "auto",
   "cuda_available": true,
   "gpu_info": {
     "gpu_count": 1,
@@ -491,10 +492,12 @@ Edit `app/config.py` to modify:
 
 ### Environment Variables
 
+- `DEVICE_MODE`: Control GPU usage (`auto`, `cuda`, `cpu`). Default: `auto`
 - `LOG_LEVEL`: Set logging level (DEBUG, INFO, WARNING, ERROR). Default: INFO
 - `LOG_FILE`: Path to log file. Default: console output only
 
 ```bash
+export DEVICE_MODE=cpu                       # Force CPU mode (disable CUDA)
 export LOG_LEVEL=DEBUG
 export LOG_FILE=/path/to/custom/logfile.log  # Enable file logging
 ```
@@ -506,7 +509,7 @@ export LOG_FILE=/path/to/custom/logfile.log  # Enable file logging
 
 ## GPU Support
 
-The service automatically detects and uses GPU if available. Models will be loaded on CUDA device for faster inference.
+By default (`DEVICE_MODE=auto`), the service automatically detects and uses GPU if available. Set `DEVICE_MODE=cpu` to force CPU-only mode, or `DEVICE_MODE=cuda` to require GPU. Models will be loaded on the configured device.
 
 ## Training Dataset
 
