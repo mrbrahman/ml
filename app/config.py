@@ -40,9 +40,6 @@ PORT = 8000
 
 # Logging Configuration
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
-LOG_FILE = os.getenv("LOG_FILE")  # None by default for console-only logging
 
 # Ensure directories exist
 os.makedirs(FAISS_INDEX_DIR, exist_ok=True)
-if LOG_FILE:
-    os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)

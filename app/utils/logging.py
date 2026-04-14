@@ -1,6 +1,5 @@
 import logging
 import sys
-from pathlib import Path
 
 class ColoredFormatter(logging.Formatter):
     """Colored formatter for TTY output"""
@@ -18,24 +17,15 @@ class ColoredFormatter(logging.Formatter):
         record.levelname = f"{log_color}{record.levelname}{self.RESET}"
         return super().format(record)
 
-def setup_logging(log_level: str = "INFO", log_file: str = None):
+def setup_logging(log_level: str = "INFO"):
     """Setup logging configuration"""
     
-    # Determine if running interactively (TTY)
     is_interactive = sys.stdout.isatty()
     
-    # Create formatters
-    if is_interactive:
-        console_formatter = ColoredFormatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-            datefmt='%H:%M:%S'
-        )
-    else:
-        console_formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
-    
-    file_formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
+    formatter = ColoredFormatter(
+        '%(levelname)s - %(name)s - %(message)s' if not is_interactive
+        else '%(asctime)s - %(levelname)s - %(name)s - %(message)s',
+        datefmt='%H:%M:%S'
     )
     
     # Setup root logger
@@ -47,15 +37,8 @@ def setup_logging(log_level: str = "INFO", log_file: str = None):
     
     # Console handler
     console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setFormatter(console_formatter)
+    console_handler.setFormatter(formatter)
     root_logger.addHandler(console_handler)
-    
-    # File handler if specified
-    if log_file:
-        Path(log_file).parent.mkdir(parents=True, exist_ok=True)
-        file_handler = logging.FileHandler(log_file)
-        file_handler.setFormatter(file_formatter)
-        root_logger.addHandler(file_handler)
     
     # Reduce noise from external libraries
     logging.getLogger("urllib3").setLevel(logging.WARNING)

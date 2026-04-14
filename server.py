@@ -7,11 +7,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.schemas import *
 from app import services
-from app.config import HOST, PORT, LOG_LEVEL, LOG_FILE, DEVICE
+from app.config import HOST, PORT, LOG_LEVEL, DEVICE
 from app.utils.logging import setup_logging, get_logger
 
 # Setup logging
-setup_logging(LOG_LEVEL, LOG_FILE)
+setup_logging(LOG_LEVEL)
 logger = get_logger(__name__)
 
 app = FastAPI(title="AI Photo Analysis Service", version="1.0.0")
@@ -224,27 +224,4 @@ async def health_check():
 if __name__ == "__main__":
     logger.info(f"Starting AI Photo Analysis Service on {HOST}:{PORT}")
     
-    # Configure uvicorn logging to match our format
-    log_config = {
-        "version": 1,
-        "disable_existing_loggers": False,
-        "formatters": {
-            "default": {
-                "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s" if not sys.stdout.isatty() else "%(asctime)s - %(name)s - \033[32m%(levelname)s\033[0m - %(message)s",
-                "datefmt": "%H:%M:%S" if sys.stdout.isatty() else None,
-            },
-        },
-        "handlers": {
-            "default": {
-                "formatter": "default",
-                "class": "logging.StreamHandler",
-                "stream": "ext://sys.stdout",
-            },
-        },
-        "root": {
-            "level": LOG_LEVEL,
-            "handlers": ["default"],
-        },
-    }
-    
-    uvicorn.run(app, host=HOST, port=PORT, log_config=log_config)
+    uvicorn.run(app, host=HOST, port=PORT, log_config=None)

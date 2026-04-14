@@ -494,18 +494,16 @@ Edit `app/config.py` to modify:
 
 - `DEVICE_MODE`: Control GPU usage (`auto`, `cuda`, `cpu`). Default: `auto`
 - `LOG_LEVEL`: Set logging level (DEBUG, INFO, WARNING, ERROR). Default: INFO
-- `LOG_FILE`: Path to log file. Default: console output only
 
 ```bash
 export DEVICE_MODE=cpu                       # Force CPU mode (disable CUDA)
 export LOG_LEVEL=DEBUG
-export LOG_FILE=/path/to/custom/logfile.log  # Enable file logging
 ```
 
 **Logging Behavior:**
 - **Interactive mode (TTY)**: Colored output with timestamps
-- **Non-interactive mode**: Plain format without timestamps (for journalctl)
-- **File logging**: Always includes full timestamps when LOG_FILE is set
+- **Non-interactive mode**: Colored output without timestamps (for journalctl)
+- **Format**: `LEVEL - module_name - message`
 
 ## GPU Support
 
@@ -541,7 +539,7 @@ This approach leverages the superior face detection capabilities on full images 
 - Face embeddings and clusters stored in FAISS indices
 - No metadata storage - all returned to calling application
 - Persistent storage in `data/faiss_indices/` directory
-- Application logs output to console by default (file logging optional)
+- Application logs output to console
 
 ## Face Recognition Response Structure
 
