@@ -6,12 +6,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.schemas import *
-from app.services import analyze_image, recognize_faces, caption_image, encode_image, search_by_text, find_similar_images, get_cluster_info
-from app.core.image_analysis import search
-from app.core import model_loader
-from app.core.face_recognition import storage as face_storage
-from app.core.face_recognition import clustering as face_clustering
-from app.core.face_recognition.annotator import create_enriched_image
+from app import services
 from app.config import HOST, PORT, LOG_LEVEL, LOG_FILE, DEVICE
 from app.utils.logging import setup_logging, get_logger
 
@@ -38,7 +33,7 @@ async def analyze_image_endpoint(request: AnalyzeImageRequest):
         raise HTTPException(status_code=404, detail="Image file not found")
     
     try:
-        result = analyze_image(request.image_id, request.image_path, request.orientation, request.xmp_regions, request.save_annotated)
+        result = services.images.analyze_composite(request.image_id, request.image_path, request.orientation, request.xmp_regions, request.save_annotated)
         logger.info(f"Image analysis completed for {request.image_id}")
         return result
     except Exception as e:
@@ -54,7 +49,7 @@ async def recognize_faces_endpoint(request: AnalyzeImageRequest):
         raise HTTPException(status_code=404, detail="Image file not found")
     
     try:
-        result = recognize_faces(request.image_id, request.image_path, request.orientation, request.save_annotated, request.xmp_regions)
+        result = services.faces.recognize(request.image_id, request.image_path, request.orientation, request.save_annotated, request.xmp_regions)
         logger.info(f"Face recognition completed for {request.image_id}, found {len(result.faces)} faces")
         return result
     except Exception as e:
@@ -70,7 +65,7 @@ async def caption_image_endpoint(request: ImageCaptionRequest):
         raise HTTPException(status_code=404, detail="Image file not found")
     
     try:
-        result = caption_image(request.image_id, request.image_path)
+        result = services.images.generate_caption(request.image_id, request.image_path)
         logger.info(f"Image captioning completed for {request.image_id}")
         return result
     except Exception as e:
@@ -83,14 +78,14 @@ async def encode_image_endpoint(request: ImageEncodeRequest):
         raise HTTPException(status_code=404, detail="Image file not found")
     
     try:
-        return encode_image(request.image_id, request.image_path)
+        return services.images.encode_image(request.image_id, request.image_path)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Image encoding failed: {str(e)}")
 
 @app.put("/faces/{cluster_id}", response_model=NameClusterResponse)
 async def name_face_cluster_endpoint(cluster_id: str, request: NameClusterRequest):
     logger.info(f"Naming cluster {cluster_id} as '{request.name}'")
-    success = face_storage.name_face_cluster(cluster_id, request.name)
+    success = services.storage.name_face_cluster(cluster_id, request.name)
     
     if success:
         logger.info(f"Successfully named cluster {cluster_id} as '{request.name}'")
@@ -105,7 +100,7 @@ async def name_face_cluster_endpoint(cluster_id: str, request: NameClusterReques
 async def search_by_text_endpoint(request: SearchRequest):
     logger.info(f"Text search query: '{request.query}', limit: {request.limit}")
     try:
-        search_results = search_by_text(request.query, request.limit)
+        search_results = services.search.by_text(request.query, request.limit)
         logger.info(f"Text search completed, found {len(search_results)} results")
         return SearchResponse(query=request.query, results=search_results)
     except Exception as e:
@@ -118,7 +113,7 @@ async def search_similar_images_endpoint(request: AnalyzeImageRequest):
         raise HTTPException(status_code=404, detail="Image file not found")
     
     try:
-        search_results = find_similar_images(request.image_path, limit=10)
+        search_results = services.search.find_similar(request.image_path, limit=10)
         return SearchResponse(query=f"Similar to {request.image_path}", results=search_results)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
@@ -128,10 +123,10 @@ async def update_face_cluster_name_endpoint(request: UpdatePersonNameRequest):
     logger.info(f"Updating person name from '{request.old_name}' to '{request.new_name}'")
     updated_clusters = 0
     updated_faces = 0
-    face_clusters, face_cluster_names = face_storage.get_face_clusters()
+    face_clusters, face_cluster_names = services.storage.get_face_clusters()
     for cluster_id, name in list(face_cluster_names.items()):
         if name == request.old_name:
-            face_storage.name_face_cluster(cluster_id, request.new_name)
+            services.storage.name_face_cluster(cluster_id, request.new_name)
             updated_clusters += 1
             updated_faces += len(face_clusters.get(cluster_id, []))
     
@@ -149,7 +144,7 @@ async def update_face_cluster_name_endpoint(request: UpdatePersonNameRequest):
 async def correct_face_assignment_endpoint(request: CorrectFaceAssignmentRequest):
     logger.info(f"Correcting face assignment for {request.image_id} to '{request.person_name}'")
     try:
-        success, cluster_id, action, message = face_clustering.correct_face_assignment(request.image_id, request.person_name)
+        success, cluster_id, action, message = services.clustering.correct_face_assignment(request.image_id, request.person_name)
         logger.info(f"Face correction completed: {action} for {request.image_id}")
         
         return CorrectFaceAssignmentResponse(
@@ -164,12 +159,12 @@ async def correct_face_assignment_endpoint(request: CorrectFaceAssignmentRequest
 
 @app.get("/faceinfo", response_model=InfoResponse)
 async def get_face_info(cluster_id: str = None, person_name: str = None):
-    return get_cluster_info(cluster_id, person_name)
+    return services.faces.get_cluster_info(cluster_id, person_name)
 
 @app.get("/faces/suggestions")
 async def get_cluster_name_suggestions(cluster_id: str = None, min_similarity: float = None):
     try:
-        suggestions = face_clustering.get_cluster_name_suggestions(cluster_id, min_similarity)
+        suggestions = services.clustering.get_cluster_name_suggestions(cluster_id, min_similarity)
         return {"suggestions": suggestions}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get suggestions: {str(e)}")
@@ -180,7 +175,7 @@ async def annotate_image_endpoint(request: AnnotateImageRequest):
         raise HTTPException(status_code=404, detail="Image file not found")
     
     try:
-        annotated_path = create_enriched_image(
+        annotated_path = services.create_enriched_image(
             request.image_path, 
             request.faces, 
             request.output_dir, 
@@ -212,7 +207,7 @@ async def health_check():
             except Exception as e:
                 gpu_info = {"error": f"Failed to get GPU info: {str(e)}"}
         
-        model_status = model_loader.get_model_status()
+        model_status = services.model_loader.get_model_status()
         
         return {
             "status": "healthy", 
