@@ -55,6 +55,7 @@ class NameClusterResponse(BaseModel):
 class SearchRequest(BaseModel):
     query: str
     limit: Optional[int] = 10
+    min_score: Optional[float] = None
 
 class SearchResult(BaseModel):
     image_id: str

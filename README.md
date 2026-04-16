@@ -392,9 +392,12 @@ Search for images using text queries.
 ```json
 {
   "query": "person smiling outdoors",
-  "limit": 10
+  "limit": 10,
+  "min_score": 0.2
 }
 ```
+
+- `min_score` (optional): Minimum similarity score threshold. Default: 0.2
 
 **Response:**
 ```json

@@ -17,6 +17,7 @@ FACE_DETECTION_MODEL = "buffalo_l"  # InsightFace model
 FACE_SIMILARITY_THRESHOLD = 0.75
 FACE_MATCH_TOP_K = 5  # Check top 5 matches for cluster consensus
 CLUSTER_SUGGESTION_THRESHOLD = 0.6  # Minimum similarity for cluster name suggestions
+TEXT_SEARCH_MIN_SCORE = 0.25  # Minimum similarity score for text search results
 IMAGE_DESCRIPTION_MODEL = "Salesforce/blip2-opt-2.7b"
 CLIP_MODEL = "openai/clip-vit-base-patch32"
 

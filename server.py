@@ -100,7 +100,7 @@ async def name_face_cluster_endpoint(cluster_id: str, request: NameClusterReques
 async def search_by_text_endpoint(request: SearchRequest):
     logger.info(f"Text search query: '{request.query}', limit: {request.limit}")
     try:
-        search_results = services.search.by_text(request.query, request.limit)
+        search_results = services.search.by_text(request.query, request.limit, request.min_score)
         logger.info(f"Text search completed, found {len(search_results)} results")
         return SearchResponse(query=request.query, results=search_results)
     except Exception as e:

@@ -2,6 +2,7 @@ import numpy as np
 from .storage import get_indices
 from . import embeddings
 from app.schemas import SearchResult
+from app.config import TEXT_SEARCH_MIN_SCORE
 from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -42,7 +43,7 @@ def search_text(embedding: np.ndarray, k: int = 10):
     
     return results
 
-def by_text(query: str, limit: int = 10):
+def by_text(query: str, limit: int = 10, min_score: float = None):
     """Search for images using text query"""
     logger.debug(f"Text search: '{query}', limit: {limit}")
     text_embedding = embeddings.encode_text(query)
@@ -50,11 +51,13 @@ def by_text(query: str, limit: int = 10):
     if text_embedding is None:
         return []
     
+    threshold = min_score if min_score is not None else TEXT_SEARCH_MIN_SCORE
     results = search_text(text_embedding, k=limit)
     
     search_results = [
         SearchResult(image_id=image_id, score=score)
         for image_id, score in results
+        if score >= threshold
     ]
     
     logger.debug(f"Text search found {len(search_results)} results")
