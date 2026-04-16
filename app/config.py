@@ -4,6 +4,7 @@ import torch
 # GPU Configuration
 _device_mode = os.getenv("DEVICE_MODE", "auto").lower()
 if _device_mode == "cpu":
+    os.environ["CUDA_VISIBLE_DEVICES"] = ""
     DEVICE = "cpu"
 elif _device_mode == "cuda":
     DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
