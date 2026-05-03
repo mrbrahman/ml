@@ -2,6 +2,7 @@ import faiss
 import numpy as np
 import pickle
 import os
+import tempfile
 from typing import Tuple, Optional, List
 from app.config import FAISS_INDEX_DIR, FACE_INDEX_FILE
 from app.utils.logging import get_logger
@@ -42,16 +43,31 @@ def _load_face_mappings():
             _face_cluster_names = data.get('cluster_names', {})
 
 def _save_face_mappings():
-    """Save face ID mappings and cluster info"""
+    """Save face ID mappings and cluster info using atomic write.
+
+    Writes to a temp file in the same directory, then uses os.replace() to
+    atomically swap it into place.  This ensures a crash mid-write leaves the
+    previous valid file intact (os.replace is atomic on POSIX).
+    """
     mapping_file = os.path.join(FAISS_INDEX_DIR, "face_mapping.pkl")
     data = {
         'id_mapping': _face_id_mapping,
         'clusters': _face_clusters,
         'cluster_names': _face_cluster_names
     }
-    
-    with open(mapping_file, 'wb') as f:
-        pickle.dump(data, f)
+
+    fd, tmp_path = tempfile.mkstemp(dir=FAISS_INDEX_DIR, suffix=".tmp")
+    try:
+        with os.fdopen(fd, 'wb') as f:
+            pickle.dump(data, f)
+        os.replace(tmp_path, mapping_file)
+    except BaseException:
+        # Clean up the temp file on any failure
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
 
 def _save_face_index():
     """Save face FAISS index and mappings"""
@@ -127,13 +143,16 @@ def name_face_cluster(cluster_id: str, name: str):
     logger.warning(f"Cluster {cluster_id} not found for naming")
     return False
 
-def remove_face_embeddings(image_id: str):
-    """Remove face embeddings for a specific image_id"""
+def remove_face_embeddings(image_id: str) -> int:
+    """Remove face embeddings for a specific image_id.
+
+    Returns the count of removed face mapping entries.
+    """
     # Find indices to remove
     indices_to_remove = [idx for idx, stored_id in _face_id_mapping.items() if stored_id == image_id]
     
     if not indices_to_remove:
-        return  # No faces found for this image_id
+        return 0  # No faces found for this image_id
     
     # Remove face embeddings
     for idx in indices_to_remove:
@@ -147,8 +166,10 @@ def remove_face_embeddings(image_id: str):
                     if cluster_id in _face_cluster_names:
                         del _face_cluster_names[cluster_id]
     
-    logger.info(f"Removed {len(indices_to_remove)} face embeddings for {image_id}")
+    removed_count = len(indices_to_remove)
+    logger.info(f"Removed {removed_count} face embeddings for {image_id}")
     _save_face_mappings()
+    return removed_count
 
 # Initialize face index on module import
 _load_face_index()

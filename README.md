@@ -228,6 +228,25 @@ Get name suggestions for unnamed clusters based on centroid analysis with neares
 }
 ```
 
+### Image Deletion
+
+#### DELETE /images/{image_id}
+Remove all stored data (face embeddings, visual embeddings, text embeddings, cluster memberships) for a given image. Uses a soft-delete strategy ??? mapping entries are removed but orphaned vectors remain in FAISS indices and are excluded from search results via mapping filtering.
+
+Returns HTTP 200 regardless of whether data existed for the image (idempotent).
+
+**Response:**
+```json
+{
+  "image_id": "uuid-from-nodejs",
+  "removed": {
+    "faces": 2,
+    "visual": 1,
+    "text": 1
+  }
+}
+```
+
 ### Image Analysis
 
 #### POST /images/caption

@@ -2,6 +2,7 @@ import faiss
 import numpy as np
 import pickle
 import os
+import tempfile
 from app.config import FAISS_INDEX_DIR, VISUAL_INDEX_FILE, TEXT_INDEX_FILE
 from app.utils.logging import get_logger
 
@@ -54,15 +55,30 @@ def _load_mappings(index_type: str):
                 _text_id_mapping = data.get('id_mapping', {})
 
 def _save_mappings(index_type: str):
-    """Save ID mappings"""
+    """Save ID mappings using atomic write.
+
+    Writes to a temp file in the same directory, then uses os.replace() to
+    atomically swap it into place.  This ensures a crash mid-write leaves the
+    previous valid file intact (os.replace is atomic on POSIX).
+    """
     mapping_file = os.path.join(FAISS_INDEX_DIR, f"{index_type}_mapping.pkl")
     if index_type == "visual":
         data = {'id_mapping': _visual_id_mapping}
     elif index_type == "text":
         data = {'id_mapping': _text_id_mapping}
-    
-    with open(mapping_file, 'wb') as f:
-        pickle.dump(data, f)
+
+    fd, tmp_path = tempfile.mkstemp(dir=FAISS_INDEX_DIR, suffix=".tmp")
+    try:
+        with os.fdopen(fd, 'wb') as f:
+            pickle.dump(data, f)
+        os.replace(tmp_path, mapping_file)
+    except BaseException:
+        # Clean up the temp file on any failure
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
 
 def _save_indices():
     """Save all FAISS indices and mappings"""
@@ -92,8 +108,11 @@ def add_text_embedding(image_id: str, embedding: np.ndarray):
     _text_id_mapping[idx] = image_id
     _save_indices()
 
-def remove_search_embeddings(image_id: str):
-    """Remove visual and text embeddings for a specific image_id"""
+def remove_search_embeddings(image_id: str) -> dict:
+    """Remove visual and text embeddings for a specific image_id.
+
+    Returns a dict with 'visual' and 'text' counts of removed entries.
+    """
     removed_count = {'visual': 0, 'text': 0}
     
     # Remove visual embeddings
@@ -118,6 +137,12 @@ def remove_search_embeddings(image_id: str):
     total_removed = sum(removed_count.values())
     if total_removed > 0:
         logger.info(f"Removed search embeddings for {image_id}: {removed_count['visual']} visual, {removed_count['text']} text")
+
+    # Persist updated mappings to disk
+    _save_mappings("visual")
+    _save_mappings("text")
+
+    return removed_count
 
 # Initialize indices on module import
 _load_indices()

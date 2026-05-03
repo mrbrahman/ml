@@ -52,6 +52,15 @@ class NameClusterResponse(BaseModel):
     success: bool
     message: str
 
+class DeletionCounts(BaseModel):
+    faces: int
+    visual: int
+    text: int
+
+class ImageDeletionResponse(BaseModel):
+    image_id: str
+    removed: DeletionCounts
+
 class SearchRequest(BaseModel):
     query: str
     limit: Optional[int] = 10

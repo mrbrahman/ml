@@ -10,6 +10,8 @@ from app.schemas import *
 from app import services
 from app.config import HOST, PORT, LOG_LEVEL, DEVICE
 from app.utils.logging import setup_logging, get_logger
+from app.core.face_recognition.storage import remove_face_embeddings
+from app.core.image_analysis.storage import remove_search_embeddings
 
 # Setup logging
 setup_logging(LOG_LEVEL)
@@ -96,6 +98,23 @@ async def encode_image_endpoint(request: ImageEncodeRequest):
         return services.images.encode_image(request.image_id, request.image_path)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Image encoding failed: {str(e)}")
+
+@app.delete("/images/{image_id}", response_model=ImageDeletionResponse)
+async def delete_image_endpoint(image_id: str):
+    logger.info(f"Starting deletion of image data for {image_id}")
+    try:
+        faces_removed = remove_face_embeddings(image_id)
+        search_removed = remove_search_embeddings(image_id)
+        removed = DeletionCounts(
+            faces=faces_removed,
+            visual=search_removed['visual'],
+            text=search_removed['text']
+        )
+        logger.info(f"Deletion completed for {image_id}: {removed.faces} faces, {removed.visual} visual, {removed.text} text")
+        return ImageDeletionResponse(image_id=image_id, removed=removed)
+    except Exception as e:
+        logger.error(f"Deletion failed for {image_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Deletion failed: {str(e)}")
 
 @app.put("/faces/{cluster_id}", response_model=NameClusterResponse)
 async def name_face_cluster_endpoint(cluster_id: str, request: NameClusterRequest):
