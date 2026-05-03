@@ -1,8 +1,9 @@
 import uvicorn
 import os
 import sys
+import json
 import torch
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.schemas import *
@@ -23,6 +24,20 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    body_str = ""
+    if request.method in ("POST", "PUT", "PATCH"):
+        body = await request.body()
+        if body:
+            try:
+                body_str = f" body={json.loads(body)}"
+            except Exception:
+                body_str = f" body={body[:500]}"
+    query = f" query={dict(request.query_params)}" if request.query_params else ""
+    logger.info(f"{request.method} {request.url.path}{query}{body_str}")
+    return await call_next(request)
 
 @app.post("/analyze", response_model=CompositeAnalyzeResponse)
 async def analyze_image_endpoint(request: AnalyzeImageRequest):
@@ -224,4 +239,4 @@ async def health_check():
 if __name__ == "__main__":
     logger.info(f"Starting AI Photo Analysis Service on {HOST}:{PORT}")
     
-    uvicorn.run(app, host=HOST, port=PORT, log_config=None)
+    uvicorn.run(app, host=HOST, port=PORT, log_config=None, access_log=False)
